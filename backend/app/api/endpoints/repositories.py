@@ -4,13 +4,14 @@ Repository Management Endpoints
 
 import os
 import shutil
+import tarfile
+import io
 from datetime import datetime
 from typing import List, Optional
 import uuid
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Header
 import httpx
-from git import Repo
 
 from app.config import get_settings
 from app.models.schemas import (
@@ -91,7 +92,7 @@ async def get_github_repos(access_token: str) -> List[dict]:
 
 
 async def clone_repository(repo: Repository, access_token: str):
-    """Clone repository to local storage"""
+    """Download repository source code via GitHub API tarball (no git binary needed)"""
     repos_dir = settings.repos_directory
     os.makedirs(repos_dir, exist_ok=True)
     
@@ -101,13 +102,33 @@ async def clone_repository(repo: Repository, access_token: str):
     if os.path.exists(local_path):
         shutil.rmtree(local_path)
     
-    # Clone with token authentication
-    clone_url = repo.clone_url.replace(
-        "https://",
-        f"https://x-access-token:{access_token}@"
-    )
+    # Download tarball from GitHub API
+    tarball_url = f"https://api.github.com/repos/{repo.full_name}/tarball/{repo.default_branch}"
     
-    Repo.clone_from(clone_url, local_path, depth=1)
+    async with httpx.AsyncClient(follow_redirects=True, timeout=120.0) as client:
+        response = await client.get(
+            tarball_url,
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Accept": "application/vnd.github+json",
+            },
+        )
+        
+        if response.status_code != 200:
+            print(f"⚠️ Failed to download tarball for {repo.full_name}: {response.status_code}")
+            return
+        
+        # Extract tarball
+        tar_bytes = io.BytesIO(response.content)
+        with tarfile.open(fileobj=tar_bytes, mode="r:gz") as tar:
+            tar.extractall(path=repos_dir)
+            # GitHub tarballs extract to a folder like "owner-repo-sha/"
+            extracted_name = tar.getnames()[0].split("/")[0]
+        
+        # Rename extracted folder to our expected path
+        extracted_path = os.path.join(repos_dir, extracted_name)
+        if os.path.exists(extracted_path):
+            os.rename(extracted_path, local_path)
     
     # Update repository record
     repo.local_path = local_path
@@ -115,6 +136,7 @@ async def clone_repository(repo: Repository, access_token: str):
     
     # Save to persistence
     save_repositories(repositories_db)
+    print(f"✅ Downloaded repository {repo.full_name} to {local_path}")
 
 
 @router.get("/github", response_model=List[dict])
