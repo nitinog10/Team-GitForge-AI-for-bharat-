@@ -332,6 +332,9 @@ export const walkthroughs = {
   getForFile: (repoId: string, filePath: string) =>
     request<WalkthroughScript[]>(`/walkthroughs/file/${repoId}?file_path=${encodeURIComponent(filePath)}`),
 
+  getForRepo: (repoId: string) =>
+    request<WalkthroughScript[]>(`/walkthroughs/repo/${repoId}`),
+
   delete: (id: string) => request(`/walkthroughs/${id}`, { method: 'DELETE' }),
 }
 

@@ -93,19 +93,15 @@ export function WalkthroughPlayer({
 
   // Audio pipeline state
   const [audioReady, setAudioReady] = useState(false)
-  const [audioLoading, setAudioLoading] = useState(false)  // don't block UI
+  const [audioLoading, setAudioLoading] = useState(true)
   const [audioError, setAudioError] = useState<string | null>(null)
   const [audioBlobUrl, setAudioBlobUrl] = useState<string | null>(null)
   const [segmentTimings, setSegmentTimings] = useState<AudioSegmentTiming[]>([])
   const [displayTime, setDisplayTime] = useState(0)
 
-  // Start with browser TTS immediately – upgrade to real audio when ready
-  const [useBrowserTTS, setUseBrowserTTS] = useState(true)
-
   // ── Refs ────────────────────────────────────────────────────────────────
   const codeContainerRef = useRef<HTMLDivElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
-  const speechSynthRef = useRef<SpeechSynthesisUtterance | null>(null)
   const currentSegmentIndexRef = useRef(currentSegmentIndex)
   const onPlayingChangeRef = useRef(onPlayingChange)
 
@@ -117,18 +113,22 @@ export function WalkthroughPlayer({
   const currentSegment = script.segments.length > 0 ? script.segments[safeIndex] : undefined
   const lines = code.split('\n')
 
-  // ── Background poll for server-generated audio ──────────────────────────
-  // Browser TTS is used immediately; this upgrades to real audio when ready.
+  // ── Poll for server-generated audio (ElevenLabs) ────────────────────────
+  // Wait for the backend to finish generating audio, then make it available.
   useEffect(() => {
     let cancelled = false
     let pollTimer: ReturnType<typeof setTimeout> | null = null
     let pollInterval = 3000 // start at 3s
     let pollCount = 0
-    const MAX_POLLS = 20 // ~60s total
+    const MAX_POLLS = 40 // ~2 minutes total
 
     const fetchAudio = async () => {
       const token = getAuthToken()
-      if (!token) return // browser TTS already active
+      if (!token) {
+        setAudioLoading(false)
+        setAudioError('Not authenticated')
+        return
+      }
 
       try {
         // 1. Check if the backend has finished generating audio
@@ -140,7 +140,8 @@ export function WalkthroughPlayer({
         if (metaRes.status === 202) {
           pollCount++
           if (pollCount >= MAX_POLLS) {
-            console.info('Audio generation timed out, staying with browser TTS')
+            setAudioLoading(false)
+            setAudioError('Audio generation timed out. Try regenerating the walkthrough.')
             return
           }
           // Audio still generating – poll again with backoff (max 6s)
@@ -148,7 +149,11 @@ export function WalkthroughPlayer({
           if (!cancelled) pollTimer = setTimeout(fetchAudio, pollInterval)
           return
         }
-        if (!metaRes.ok) return // stay with browser TTS
+        if (!metaRes.ok) {
+          setAudioLoading(false)
+          setAudioError('Failed to fetch audio metadata')
+          return
+        }
 
         const meta = await metaRes.json()
         if (cancelled) return
@@ -163,37 +168,48 @@ export function WalkthroughPlayer({
           `${API_BASE_URL}/walkthroughs/${script.id}/audio/stream`,
           { headers: { Authorization: `Bearer ${token}` } },
         )
-        if (!streamRes.ok) return // stay with browser TTS
+        if (!streamRes.ok) {
+          setAudioLoading(false)
+          setAudioError('Failed to fetch audio stream')
+          return
+        }
 
         // Verify response is actually audio
         const contentType = streamRes.headers.get('content-type') || ''
-        if (!contentType.includes('audio')) return
+        if (!contentType.includes('audio')) {
+          setAudioLoading(false)
+          setAudioError('Invalid audio format received')
+          return
+        }
 
         const blob = await streamRes.blob()
         if (cancelled) return
 
         // Guard: if the blob is empty or too small, it's not valid audio
-        if (!blob || blob.size < 100) return
+        if (!blob || blob.size < 100) {
+          setAudioLoading(false)
+          setAudioError('Audio file is empty or corrupted')
+          return
+        }
 
-        // Audio is ready — upgrade from browser TTS
+        // Audio is ready
         const url = URL.createObjectURL(blob)
         setSegmentTimings(timings)
         setAudioBlobUrl(url)
         setAudioReady(true)
-        setUseBrowserTTS(false)
         setAudioLoading(false)
-        // Stop browser TTS if playing
-        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-          window.speechSynthesis.cancel()
-        }
-        console.info('🔊 Upgraded to server-generated audio')
+        console.info('🔊 AI voice ready')
       } catch {
-        // Silently stay with browser TTS
+        if (!cancelled) {
+          setAudioLoading(false)
+          setAudioError('Failed to load audio')
+        }
       }
     }
 
     // Start polling after a short delay (give backend time to start generating)
-    pollTimer = setTimeout(fetchAudio, 3000)
+    setAudioLoading(true)
+    pollTimer = setTimeout(fetchAudio, 2000)
     return () => {
       cancelled = true
       if (pollTimer) clearTimeout(pollTimer)
@@ -205,64 +221,23 @@ export function WalkthroughPlayer({
     return () => { if (audioBlobUrl) URL.revokeObjectURL(audioBlobUrl) }
   }, [audioBlobUrl])
 
-  // ── Browser TTS fallback initialisation ─────────────────────────────────
-  useEffect(() => {
-    if (!useBrowserTTS) return
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
 
-    speechSynthRef.current = new SpeechSynthesisUtterance()
-    speechSynthRef.current.rate = playbackSpeed
-    speechSynthRef.current.volume = isMuted ? 0 : 1
-
-    speechSynthRef.current.onend = () => {
-      const idx = currentSegmentIndexRef.current
-      if (idx < script.segments.length - 1) {
-        setCurrentSegmentIndex((prev) => Math.min(prev + 1, script.segments.length - 1))
-        setSegmentProgress(0)
-      } else {
-        onPlayingChangeRef.current(false)
-        setSegmentProgress(100)
-      }
-    }
-
-    return () => { window.speechSynthesis.cancel() }
-  }, [useBrowserTTS])
 
   // ── Sync audio element ↔ play state ─────────────────────────────────────
   useEffect(() => {
-    // ElevenLabs path
-    if (audioReady && audioRef.current && !useBrowserTTS) {
+    if (audioReady && audioRef.current) {
       if (isPlaying) audioRef.current.play().catch(console.error)
       else audioRef.current.pause()
-      return
     }
-
-    // Browser TTS fallback path
-    if (useBrowserTTS && currentSegment) {
-      if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
-      if (isPlaying) {
-        window.speechSynthesis.cancel()
-        if (speechSynthRef.current) {
-          speechSynthRef.current.text = currentSegment.text
-          speechSynthRef.current.rate = playbackSpeed
-          speechSynthRef.current.volume = isMuted ? 0 : 1
-          window.speechSynthesis.speak(speechSynthRef.current)
-        }
-      } else {
-        window.speechSynthesis.cancel()
-      }
-    }
-  }, [isPlaying, audioReady, useBrowserTTS, currentSegmentIndex, currentSegment, playbackSpeed, isMuted])
+  }, [isPlaying, audioReady, currentSegmentIndex])
 
   // ── Sync playback speed / mute with <audio> ────────────────────────────
   useEffect(() => {
     if (audioRef.current) audioRef.current.playbackRate = playbackSpeed
-    if (speechSynthRef.current) speechSynthRef.current.rate = playbackSpeed
   }, [playbackSpeed])
 
   useEffect(() => {
     if (audioRef.current) audioRef.current.muted = isMuted
-    if (speechSynthRef.current) speechSynthRef.current.volume = isMuted ? 0 : 1
   }, [isMuted])
 
   // ── Audio timeupdate → segment sync ─────────────────────────────────────
@@ -296,12 +271,11 @@ export function WalkthroughPlayer({
     setSegmentProgress(100)
   }, [onPlayingChange])
 
-  /** If the <audio> element fails to load/play, fall back to browser TTS. */
+  /** If the <audio> element fails to load/play, show error. */
   const handleAudioError = useCallback(() => {
-    console.warn('Audio element playback error – switching to browser TTS')
+    console.warn('Audio element playback error')
     setAudioReady(false)
-    setAudioError('Audio playback failed')
-    setUseBrowserTTS(true)
+    setAudioError('Audio playback failed. Try regenerating the walkthrough.')
     // Revoke the broken blob URL so it doesn't retry
     if (audioBlobUrl) {
       URL.revokeObjectURL(audioBlobUrl)
@@ -309,18 +283,8 @@ export function WalkthroughPlayer({
     }
   }, [audioBlobUrl])
 
-  // ── Browser TTS progress timer (fallback only) ─────────────────────────
-  useEffect(() => {
-    if (!useBrowserTTS || !isPlaying || !currentSegment) return
-
-    const duration = (currentSegment.durationEstimate * 1000) / playbackSpeed
-    const interval = duration / 100
-    const timer = setInterval(() => {
-      setSegmentProgress((prev) => (prev >= 100 ? 100 : prev + 1))
-    }, interval)
-
-    return () => clearInterval(timer)
-  }, [useBrowserTTS, isPlaying, currentSegmentIndex, playbackSpeed, currentSegment])
+  // ── Audio-driven progress timer ─────────────────────────────────────────
+  // (no browser TTS progress timer needed — we only use real audio)
 
   // ── Progress / time computation ─────────────────────────────────────────
   const audioDuration = audioRef.current?.duration || script.totalDuration
@@ -355,9 +319,6 @@ export function WalkthroughPlayer({
 
   // ── Handlers ────────────────────────────────────────────────────────────
   const handleSkipBack = () => {
-    if (useBrowserTTS && typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel()
-    }
     if (currentSegmentIndex > 0) {
       const prevIdx = currentSegmentIndex - 1
       if (audioReady && audioRef.current && segmentTimings[prevIdx]) {
@@ -369,9 +330,6 @@ export function WalkthroughPlayer({
   }
 
   const handleSkipForward = () => {
-    if (useBrowserTTS && typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel()
-    }
     if (currentSegmentIndex < script.segments.length - 1) {
       const nextIdx = currentSegmentIndex + 1
       if (audioReady && audioRef.current && segmentTimings[nextIdx]) {
@@ -383,10 +341,6 @@ export function WalkthroughPlayer({
   }
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (useBrowserTTS && typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel()
-    }
-
     const rect = e.currentTarget.getBoundingClientRect()
     const percentage = (e.clientX - rect.left) / rect.width
 
@@ -438,10 +392,21 @@ export function WalkthroughPlayer({
         />
       )}
 
-      {/* Audio status – show subtle indicator when upgrade is available */}
-      {audioReady && !useBrowserTTS && (
+      {/* Audio status */}
+      {audioLoading && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-dv-accent/10 border-b border-dv-border text-xs text-dv-accent">
+          <div className="w-3 h-3 border-2 border-dv-accent/30 border-t-dv-accent rounded-full animate-spin" />
+          Preparing AI voice…
+        </div>
+      )}
+      {audioReady && (
         <div className="flex items-center gap-2 px-4 py-1.5 bg-green-500/10 border-b border-dv-border text-xs text-green-400">
-          🔊 AI voice active
+          🔊 AI voice ready
+        </div>
+      )}
+      {audioError && (
+        <div className="flex items-center gap-2 px-4 py-1.5 bg-dv-error/10 border-b border-dv-border text-xs text-dv-error">
+          ⚠️ {audioError}
         </div>
       )}
 
@@ -466,10 +431,10 @@ export function WalkthroughPlayer({
               )}
               initial={false}
               animate={{
-                backgroundColor: isHighlighted 
-                  ? 'rgba(99, 102, 241, 0.15)' 
-                  : isInRange 
-                    ? 'rgba(99, 102, 241, 0.05)' 
+                backgroundColor: isHighlighted
+                  ? 'rgba(99, 102, 241, 0.15)'
+                  : isInRange
+                    ? 'rgba(99, 102, 241, 0.05)'
                     : 'transparent',
               }}
             >
@@ -516,7 +481,7 @@ export function WalkthroughPlayer({
       {/* Controls */}
       <div className="border-t border-dv-border bg-dv-surface p-4">
         {/* Progress bar */}
-        <div 
+        <div
           className="h-2 bg-dv-elevated rounded-full mb-4 cursor-pointer overflow-hidden"
           onClick={handleSeek}
         >
@@ -542,10 +507,19 @@ export function WalkthroughPlayer({
               >
                 <SkipBack className="w-5 h-5 text-dv-text-muted" />
               </button>
-              
+
               <button
-                onClick={() => onPlayingChange(!isPlaying)}
-                className="w-14 h-14 rounded-full bg-dv-accent flex items-center justify-center hover:bg-dv-accent-hover transition-colors"
+                onClick={() => {
+                  if (!audioReady && audioLoading) return // Don't play until audio is ready
+                  onPlayingChange(!isPlaying)
+                }}
+                className={clsx(
+                  'w-14 h-14 rounded-full flex items-center justify-center transition-colors',
+                  audioReady
+                    ? 'bg-dv-accent hover:bg-dv-accent-hover cursor-pointer'
+                    : 'bg-dv-accent/40 cursor-not-allowed'
+                )}
+                disabled={!audioReady}
               >
                 {isPlaying ? (
                   <Pause className="w-6 h-6 text-white" />
@@ -553,7 +527,7 @@ export function WalkthroughPlayer({
                   <Play className="w-6 h-6 text-white ml-1" />
                 )}
               </button>
-              
+
               <button
                 onClick={handleSkipForward}
                 className="p-2 rounded-lg hover:bg-dv-elevated transition-colors"
@@ -601,7 +575,7 @@ export function WalkthroughPlayer({
                 <Clock className="w-4 h-4 text-dv-text-muted" />
                 <span className="text-sm text-dv-text-muted">{playbackSpeed}x</span>
               </button>
-              
+
               <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block">
                 <div className="glass-panel p-2 flex flex-col gap-1">
                   {[0.5, 0.75, 1, 1.25, 1.5, 2].map((speed) => (

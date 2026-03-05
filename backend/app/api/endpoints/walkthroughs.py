@@ -233,6 +233,31 @@ async def get_walkthroughs_for_file(
     return walkthroughs
 
 
+@router.get("/repo/{repo_id}")
+async def get_walkthroughs_for_repo(
+    repo_id: str,
+    authorization: str = Header(None)
+) -> List[WalkthroughScript]:
+    """Get all walkthroughs for a specific repository"""
+    user = await get_current_user(authorization)
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    repo = repositories_db.get(repo_id)
+    
+    if not repo or repo.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Repository not found")
+    
+    # Find all walkthroughs belonging to this repo
+    repo_walkthroughs = [
+        wt for wt in walkthroughs_db.values()
+        if wt.metadata.get("repository_id") == repo_id
+    ]
+    
+    return repo_walkthroughs
+
+
 @router.delete("/{walkthrough_id}")
 async def delete_walkthrough(walkthrough_id: str, authorization: str = Header(None)):
     """Delete a walkthrough"""

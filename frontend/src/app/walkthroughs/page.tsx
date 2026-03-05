@@ -41,20 +41,25 @@ export default function WalkthroughsPage() {
       setIsLoading(true)
       try {
         const repos = await repositories.list()
-        // For each repo, try to fetch walkthroughs per file — the API provides getForFile
-        // Since we don't have a "list all walkthroughs" endpoint, aggregate from repos
         const all: WalkthroughEntry[] = []
 
-        for (const repo of repos) {
-          if (!repo.is_indexed) continue
-          try {
-            // The walkthroughs.getForFile requires a file path, but we can try listing from repo
-            // Try fetching walkthroughs for the repo using the diagrams endpoint pattern
-            // Actually the API has no "list walkthroughs for repo" endpoint, so this is best-effort
-            // We'll try the files tree and then check per file — but that's expensive.
-            // For now, show repos as launch-points for walkthroughs.
-          } catch {
-            // Silently skip
+        // Fetch walkthroughs for each indexed repo in parallel
+        const results = await Promise.allSettled(
+          repos
+            .filter((repo) => repo.is_indexed)
+            .map(async (repo) => {
+              const repoWalkthroughs = await walkthroughs.getForRepo(repo.id)
+              return repoWalkthroughs.map((wt) => ({
+                ...wt,
+                repoId: repo.id,
+                repoName: repo.name,
+              }))
+            })
+        )
+
+        for (const result of results) {
+          if (result.status === 'fulfilled') {
+            all.push(...result.value)
           }
         }
 

@@ -47,7 +47,7 @@ Three-layer system: **Ingestion → Logic → Presentation**.
 - **Config:** `config.py` — Pydantic settings loaded from `.env`
 - **Routes:** `api/routes.py` aggregates 6 endpoint modules under `/api`:
   - `auth.py` — GitHub OAuth, JWT tokens, in-memory user store
-  - `repositories.py` — Clone repos to local filesystem, trigger indexing
+  - `repositories.py` — Clone repos, auto-index after clone, re-clone on stale paths, status polling
   - `files.py` — File tree, raw content, AST, dependency graph
   - `walkthroughs.py` — Generate/retrieve walkthrough scripts and stream audio
   - `diagrams.py` — Generate Mermaid diagrams from code
@@ -76,10 +76,10 @@ Three-layer system: **Ingestion → Logic → Presentation**.
 - **Providers:** `app/providers.tsx` — NextAuth SessionProvider, React Query, Zustand hydration, toast notifications
 - **Key components:** `components/walkthrough/WalkthroughPlayer.tsx` (main player), `FileExplorer.tsx`, `DiagramPanel.tsx`, `SandboxPanel.tsx`
 
-### Data Flow
 1. GitHub OAuth → JWT stored in localStorage
-2. Repo connected → cloned to local `./repos/` → files parsed with Tree-sitter → chunks embedded in ChromaDB
-3. Walkthrough: file AST + ChromaDB context → GPT-4o generates narration segments with line ranges → pyttsx3 generates audio → player syncs audio with code highlighting
+2. Repo connected → downloaded from GitHub → files parsed with Tree-sitter → chunks embedded in ChromaDB (all automatic)
+3. Walkthrough: file AST + ChromaDB context → GPT-4o generates narration segments with line ranges → ElevenLabs/Edge-TTS generates audio → player syncs audio with code highlighting
+4. Existing walkthroughs loaded automatically on next visit (no regeneration)
 
 ### Frontend-Backend Connection
 - Frontend calls backend at `http://localhost:8000/api` (configured via `NEXT_PUBLIC_API_URL`)
@@ -89,11 +89,15 @@ Three-layer system: **Ingestion → Logic → Presentation**.
 - Errors follow `{ detail: "message" }` format
 
 ## Key Design Decisions
-- **In-memory storage** for users/repos in development — no database required to run locally
+- **AWS DynamoDB + S3 persistence** for users/repos/walkthroughs/audio — data survives server restarts
+- **Auto-index on connect** — repositories are cloned + indexed automatically, no manual step
+- **Transparent re-clone** — if App Runner instance restarts, repos are re-downloaded from GitHub on first access
+- **Single Gunicorn worker** in production — avoids multi-worker in-memory state inconsistency
 - **Tree-sitter for AST parsing** (not regex) — provides accurate function/class/scope extraction
 - **ChromaDB persists** to `./chroma_db/` directory
 - **Two view modes** for walkthroughs: "developer" (technical) and "manager" (business summary)
-- **pyttsx3 runs offline** — no external TTS API needed
+- **ElevenLabs / Edge-TTS** for AI voice — browser TTS as instant fallback
 - **Services use lazy initialization** — created in lifespan, accessed via `request.app.state`
+- **Sandbox uses `sys.executable`** — works on any platform (Windows, Amazon Linux, Docker)
 - **TypeScript strict mode** enabled; path alias `@/*` maps to `src/*`
 - **Styling:** Tailwind CSS with dark theme, DM Sans (UI) + JetBrains Mono (code), Framer Motion animations
