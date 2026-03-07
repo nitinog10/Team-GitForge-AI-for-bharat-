@@ -1,24 +1,13 @@
-"""Audio Generator Service – Text-to-Speech
+"""Audio Generator Service – Text-to-Speech (ElevenLabs only)
 
-Converts walkthrough scripts into AI voice narration.
-
-Priority chain:
-  1. **ElevenLabs** (set ELEVENLABS_API_KEY) – premium quality.
-  2. **Edge-TTS** (free, no key needed) – Microsoft Edge online TTS, produces MP3.
-
-Both paths return MP3 bytes, so the rest of the pipeline can treat all
-audio uniformly.
+Converts walkthrough scripts into AI voice narration using ElevenLabs API.
 """
 
 import asyncio
-import io
-import os
-import struct
 import time
-from typing import Optional, AsyncIterator, List, Tuple
+from typing import Optional, AsyncIterator, List
 
 import httpx
-import aiofiles
 
 from app.config import get_settings
 
@@ -26,12 +15,9 @@ settings = get_settings()
 
 ELEVENLABS_BASE_URL = "https://api.elevenlabs.io/v1"
 
-# Edge-TTS voice to use when ElevenLabs is unavailable
-EDGE_TTS_VOICE = "en-US-GuyNeural"
-
 
 class AudioGeneratorService:
-    """Text-to-speech service with ElevenLabs → Edge-TTS fallback."""
+    """Text-to-speech service using ElevenLabs API."""
 
     def __init__(self):
         self._api_key: str = settings.elevenlabs_api_key
@@ -39,15 +25,13 @@ class AudioGeneratorService:
         self._model_id: str = settings.elevenlabs_model_id
         self._client: Optional[httpx.AsyncClient] = None
 
-        if self._api_key:
-            self._mode = "elevenlabs"
-            print(f"✅ ElevenLabs TTS ready  (voice={self._voice_id}, model={self._model_id})")
+        if not self._api_key:
+            print("⚠️  ELEVENLABS_API_KEY not set – audio generation will fail!")
         else:
-            self._mode = "edge-tts"
-            print(f"ℹ️  ELEVENLABS_API_KEY not set – using free Edge-TTS (voice={EDGE_TTS_VOICE})")
+            print(f"✅ ElevenLabs TTS ready  (voice={self._voice_id}, model={self._model_id})")
 
     # ------------------------------------------------------------------
-    # HTTP client (lazy, reusable) – ElevenLabs only
+    # HTTP client (lazy, reusable)
     # ------------------------------------------------------------------
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -58,7 +42,7 @@ class AudioGeneratorService:
                     "xi-api-key": self._api_key,
                     "Content-Type": "application/json",
                 },
-                timeout=60.0,
+                timeout=120.0,
             )
         return self._client
 
@@ -75,21 +59,6 @@ class AudioGeneratorService:
         }
 
     # ------------------------------------------------------------------
-    # Edge-TTS helper (free fallback)
-    # ------------------------------------------------------------------
-
-    async def _generate_edge_tts(self, text: str) -> bytes:
-        """Generate MP3 bytes via Microsoft Edge-TTS (free, no key)."""
-        import edge_tts
-
-        communicate = edge_tts.Communicate(text, EDGE_TTS_VOICE)
-        buf = io.BytesIO()
-        async for chunk in communicate.stream():
-            if chunk["type"] == "audio":
-                buf.write(chunk["data"])
-        return buf.getvalue()
-
-    # ------------------------------------------------------------------
     # Core generation
     # ------------------------------------------------------------------
 
@@ -98,15 +67,11 @@ class AudioGeneratorService:
         text: str,
         voice_id: Optional[str] = None,
     ) -> bytes:
-        """Generate MP3 audio for a single text segment."""
-        if self._mode == "edge-tts":
-            try:
-                return await self._generate_edge_tts(text)
-            except Exception as e:
-                print(f"⚠️  Edge-TTS error: {e}")
-                return b""  # empty fallback; browser TTS will kick in
+        """Generate MP3 audio for a single text segment via ElevenLabs."""
+        if not self._api_key:
+            print("⚠️  ElevenLabs API key not configured")
+            return b""
 
-        # ElevenLabs path
         try:
             client = await self._get_client()
             vid = voice_id or self._voice_id
@@ -114,15 +79,21 @@ class AudioGeneratorService:
                 f"/text-to-speech/{vid}",
                 json=self._voice_body(text),
             )
-            resp.raise_for_status()
-            return resp.content
-        except Exception as e:
-            print(f"⚠️  ElevenLabs API error, falling back to Edge-TTS: {e}")
-            try:
-                return await self._generate_edge_tts(text)
-            except Exception as e2:
-                print(f"⚠️  Edge-TTS also failed: {e2}")
+            if resp.status_code == 401:
+                print(f"⚠️  ElevenLabs 401 Unauthorized – check your API key")
                 return b""
+            if resp.status_code == 422:
+                print(f"⚠️  ElevenLabs 422 – invalid voice_id or model_id. Response: {resp.text}")
+                return b""
+            resp.raise_for_status()
+            print(f"✅ ElevenLabs audio generated ({len(resp.content)} bytes)")
+            return resp.content
+        except httpx.TimeoutException:
+            print(f"⚠️  ElevenLabs request timed out for segment ({len(text)} chars)")
+            return b""
+        except Exception as e:
+            print(f"⚠️  ElevenLabs API error: {e}")
+            return b""
 
     async def generate_full_audio(
         self,
@@ -140,9 +111,9 @@ class AudioGeneratorService:
         self,
         texts: List[str],
         voice_id: Optional[str] = None,
-        max_concurrent: int = 4,
+        max_concurrent: int = 3,
     ) -> List[bytes]:
-        """Generate audio for multiple segments in parallel (up to max_concurrent at a time).
+        """Generate audio for multiple segments in parallel.
 
         Returns a list of bytes in the same order as *texts*.
         """
@@ -165,12 +136,9 @@ class AudioGeneratorService:
         text: str,
         voice_id: Optional[str] = None,
     ) -> AsyncIterator[bytes]:
-        """Yield MP3 chunks for a StreamingResponse."""
-        if self._mode == "edge-tts":
-            data = await self._generate_edge_tts(text)
-            chunk_size = 4096
-            for i in range(0, len(data), chunk_size):
-                yield data[i : i + chunk_size]
+        """Yield MP3 chunks via ElevenLabs streaming endpoint."""
+        if not self._api_key:
+            print("⚠️  ElevenLabs API key not configured – cannot stream")
             return
 
         try:
@@ -185,9 +153,7 @@ class AudioGeneratorService:
                 async for chunk in resp.aiter_bytes(chunk_size=4096):
                     yield chunk
         except Exception as e:
-            print(f"⚠️  ElevenLabs streaming error, falling back to Edge-TTS: {e}")
-            data = await self._generate_edge_tts(text)
-            yield data
+            print(f"⚠️  ElevenLabs streaming error: {e}")
 
     # ------------------------------------------------------------------
     # Helpers

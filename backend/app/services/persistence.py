@@ -559,6 +559,9 @@ def save_automation_history(full_name: str, data: dict):
             "full_name": full_name,
             "data_json": json.dumps(data, default=str),
         })
+    except ClientError as e:
+        if e.response["Error"]["Code"] != "ResourceNotFoundException":
+            print(f"Error saving automation history to DynamoDB: {e}")
     except Exception as e:
         print(f"Error saving automation history to DynamoDB: {e}")
 
@@ -578,6 +581,9 @@ def load_automation_history(full_name: str) -> dict:
             data = json.loads(item.get("data_json", "{}"))
             _automation_history_cache[full_name] = data
             return data
+    except ClientError as e:
+        if e.response["Error"]["Code"] != "ResourceNotFoundException":
+            print(f"Error loading automation history from DynamoDB: {e}")
     except Exception as e:
         print(f"Error loading automation history from DynamoDB: {e}")
 

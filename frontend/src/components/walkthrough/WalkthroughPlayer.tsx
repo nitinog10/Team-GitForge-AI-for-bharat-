@@ -150,8 +150,10 @@ export function WalkthroughPlayer({
           return
         }
         if (!metaRes.ok) {
+          const errBody = await metaRes.json().catch(() => null)
+          const errMsg = errBody?.message || 'Audio generation failed – check ElevenLabs API key and quota'
           setAudioLoading(false)
-          setAudioError('Failed to fetch audio metadata')
+          setAudioError(errMsg)
           return
         }
 

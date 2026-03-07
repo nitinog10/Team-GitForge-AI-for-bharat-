@@ -1,5 +1,4 @@
-"""
-Script Generator Service - LangChain + GPT-4o Integration
+"""Script Generator Service - AWS Bedrock Nova Integration
 
 Generates natural language walkthrough scripts from code analysis.
 This is the core AI component that creates the "Senior Engineer" narration.
@@ -11,6 +10,7 @@ import uuid
 from datetime import datetime
 
 from app.config import get_settings
+from app.services.bedrock_client import call_nova_lite, call_nova_pro
 from app.models.schemas import (
     WalkthroughScript,
     ScriptSegment,
@@ -25,7 +25,7 @@ settings = get_settings()
 
 class ScriptGeneratorService:
     """
-    Generates walkthrough scripts using LangChain and GPT-4o.
+    Generates walkthrough scripts using AWS Bedrock Nova models.
     
     Creates:
     - Developer Mode: Technical explanations with inputs/outputs/complexity
@@ -33,33 +33,7 @@ class ScriptGeneratorService:
     """
     
     def __init__(self):
-        self._llm = None
-        self._chain = None
-    
-    def _initialize(self):
-        """Lazy initialization of LangChain components"""
-        if self._llm is not None:
-            return
-        
-        try:
-            from langchain_openai import ChatOpenAI
-            from langchain.prompts import ChatPromptTemplate
-            from langchain.output_parsers import PydanticOutputParser
-            
-            self._llm = ChatOpenAI(
-                model="gpt-4o",
-                temperature=0.3,
-                api_key=settings.openai_api_key,
-            )
-            
-            print("✅ LangChain initialized with GPT-4o")
-            
-        except ImportError as e:
-            print(f"⚠️ LangChain not installed ({e}), using mock generator")
-            self._llm = "mock"
-        except Exception as e:
-            print(f"⚠️ LangChain initialization failed: {type(e).__name__}: {e}")
-            self._llm = "mock"
+        self._mock = False
     
     async def generate_script(
         self,
@@ -82,8 +56,6 @@ class ScriptGeneratorService:
         Returns:
             WalkthroughScript with all segments
         """
-        self._initialize()
-        
         script_id = f"wt_{uuid.uuid4().hex[:12]}"
         lines = content.split("\n")
         
@@ -139,14 +111,13 @@ class ScriptGeneratorService:
         view_mode: ViewMode,
     ) -> ScriptSegment:
         """Generate the opening overview segment"""
-        self._initialize()
         
         # Count code elements
         functions = [n for n in ast_nodes if n.type == NodeType.FUNCTION]
         classes = [n for n in ast_nodes if n.type == NodeType.CLASS]
         imports = [n for n in ast_nodes if n.type == NodeType.IMPORT]
         
-        if self._llm == "mock":
+        if self._mock:
             if view_mode == ViewMode.DEVELOPER:
                 text = (
                     f"Welcome to the walkthrough of {os.path.basename(file_path)}. "
@@ -184,12 +155,11 @@ class ScriptGeneratorService:
         order: int,
     ) -> ScriptSegment:
         """Generate a segment for a specific AST node"""
-        self._initialize()
         
         # Extract the code for this node
         node_code = "\n".join(lines[node.start_line - 1:node.end_line])
         
-        if self._llm == "mock":
+        if self._mock:
             if view_mode == ViewMode.DEVELOPER:
                 if node.type == NodeType.FUNCTION:
                     params_str = ", ".join(node.parameters) if node.parameters else "no parameters"
@@ -244,7 +214,9 @@ class ScriptGeneratorService:
                 )
         else:
             prompt = self._get_node_prompt(node, node_code, view_mode)
-            text = await self._call_llm(prompt)
+            # Route: long segments (> 5 lines) use Nova Pro, short use Nova Lite
+            use_pro = (node.end_line - node.start_line) > 5
+            text = await self._call_llm(prompt, use_pro=use_pro)
         
         return ScriptSegment(
             id=f"seg_{uuid.uuid4().hex[:8]}",
@@ -390,34 +362,41 @@ Requirements:
 - Focus on business purpose
 - Keep it to 2 sentences"""
     
-    async def _call_llm(self, prompt: str) -> str:
-        """Call the LLM to generate text"""
+    async def _call_llm(self, prompt: str, use_pro: bool = False) -> str:
+        """Call Bedrock Nova model to generate text."""
+        import logging
+        _logger = logging.getLogger(__name__)
         try:
-            from langchain.schema import HumanMessage
-            
-            messages = [HumanMessage(content=prompt)]
-            response = await self._llm.ainvoke(messages)
-            
-            return response.content
-            
+            if use_pro:
+                result = await call_nova_pro(prompt)
+            else:
+                result = await call_nova_lite(prompt)
+            return result
         except Exception as e:
-            print(f"⚠️ LLM call failed ({type(e).__name__}): {e}")
-            # Extract useful info from the prompt to build a meaningful fallback
-            # rather than returning a generic message
-            lines = prompt.split('\n')
-            # Try to find the code snippet in the prompt
-            code_start = None
-            code_end = None
-            for i, line in enumerate(lines):
-                if line.strip() == '```' and code_start is None:
-                    code_start = i + 1
-                elif line.strip() == '```' and code_start is not None:
-                    code_end = i
-                    break
-            if code_start and code_end:
-                code_preview = '\n'.join(lines[code_start:min(code_start + 5, code_end)])
-                return f"This section contains the following code: {code_preview.strip()}"
-            return "This section contains code logic. Enable a valid OpenAI API key for detailed AI-generated explanations."
+            _logger.warning("Bedrock call failed (%s), attempting fallback", e)
+            try:
+                # Tier-down fallback: pro→lite, lite→micro
+                if use_pro:
+                    return await call_nova_lite(prompt)
+                else:
+                    from app.services.bedrock_client import call_nova_micro
+                    return await call_nova_micro(prompt)
+            except Exception as e2:
+                _logger.warning("Bedrock fallback also failed (%s), using code extraction", e2)
+                # Extract useful info from the prompt to build a meaningful fallback
+                lines = prompt.split('\n')
+                code_start = None
+                code_end = None
+                for i, line in enumerate(lines):
+                    if line.strip() == '```' and code_start is None:
+                        code_start = i + 1
+                    elif line.strip() == '```' and code_start is not None:
+                        code_end = i
+                        break
+                if code_start and code_end:
+                    code_preview = '\n'.join(lines[code_start:min(code_start + 5, code_end)])
+                    return f"This section contains the following code: {code_preview.strip()}"
+                return "This section contains code logic. Enable AWS Bedrock for detailed AI-generated explanations."
     
     def _estimate_duration(self, text: str) -> float:
         """Estimate speech duration in seconds (average 150 words per minute)"""

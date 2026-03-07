@@ -35,6 +35,7 @@ settings = get_settings()
 walkthroughs_db: dict[str, WalkthroughScript] = load_walkthroughs()
 audio_walkthroughs_db: dict[str, AudioWalkthrough] = load_audio_walkthroughs()
 audio_bytes_store: dict[str, bytes] = load_audio_bytes()
+audio_failed: dict[str, str] = {}  # walkthrough_id → error message
 print(f"📂 Loaded {len(walkthroughs_db)} walkthroughs, {len(audio_walkthroughs_db)} audio records from disk")
 
 
@@ -143,11 +144,20 @@ async def get_walkthrough_audio(walkthrough_id: str, authorization: str = Header
     if not walkthrough:
         raise HTTPException(status_code=404, detail="Walkthrough not found")
 
+    # Check if audio generation failed
+    fail_msg = audio_failed.get(walkthrough_id)
+    if fail_msg:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=503,
+            content={"status": "failed", "message": fail_msg},
+        )
+
     audio = audio_walkthroughs_db.get(walkthrough_id)
     has_bytes = bool(audio_bytes_store.get(walkthrough_id))
 
     if not audio or not has_bytes:
-        # Audio is still being generated or generation failed – return 202
+        # Audio is still being generated
         from fastapi.responses import JSONResponse
         return JSONResponse(
             status_code=202,
@@ -194,7 +204,7 @@ async def stream_walkthrough_audio(walkthrough_id: str, authorization: str = Hea
             all_bytes += audio_data
 
     if not all_bytes:
-        raise HTTPException(status_code=503, detail="Audio generation failed – use browser TTS")
+        raise HTTPException(status_code=503, detail="Audio generation failed – check ElevenLabs API key and quota")
 
     return Response(
         content=all_bytes,
@@ -279,6 +289,7 @@ async def delete_walkthrough(walkthrough_id: str, authorization: str = Header(No
     if walkthrough_id in audio_bytes_store:
         del audio_bytes_store[walkthrough_id]
         delete_audio_bytes(walkthrough_id)
+    audio_failed.pop(walkthrough_id, None)
     
     return APIResponse(success=True, message="Walkthrough deleted")
 
@@ -347,6 +358,7 @@ async def generate_audio_for_walkthrough(walkthrough_id: str):
         print(f"✅ Audio generated & saved for walkthrough {walkthrough_id} "
               f"({len(audio_segments)} segments, {current_time:.1f}s audio, {elapsed:.1f}s wall-time)")
     else:
-        print(f"⚠️  No valid audio for walkthrough {walkthrough_id} "
-              f"({failed_count} failed) – browser TTS will be used")
+        error_msg = f"Audio generation failed for all {failed_count} segments – check ElevenLabs API key and quota"
+        audio_failed[walkthrough_id] = error_msg
+        print(f"⚠️  {error_msg} (walkthrough {walkthrough_id})")
 

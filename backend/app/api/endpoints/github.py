@@ -11,7 +11,8 @@ import time
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Header
-from openai import AsyncOpenAI
+
+from app.services.bedrock_client import call_nova_pro, call_nova_lite
 
 from app.config import get_settings
 from app.models.schemas import (
@@ -214,8 +215,6 @@ async def implement_fix(
         raise HTTPException(status_code=400, detail="No suggestions provided")
 
     try:
-        openai_client = AsyncOpenAI(api_key=settings.openai_api_key)
-
         # ── Step 1 — Get the full file tree ───────────────────
         tree = await gh.list_tree(body.owner, body.repo, body.base_branch)
         source_files = [
@@ -229,33 +228,39 @@ async def implement_fix(
         suggestions_text = "\n".join(f"- {s}" for s in body.suggestions)
 
         # ── Step 2 — Ask AI which files to modify ─────────────
-        plan_resp = await openai_client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a senior software engineer analysing a codebase. "
-                        "Given the repository file list and improvement suggestions, "
-                        "identify which files need modification. "
-                        "Return ONLY valid JSON: {\"files\": [\"path/to/file1.py\", ...]}"
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        f"Repository files:\n{json.dumps(source_files[:200])}\n\n"
-                        f"Improvement suggestions:\n{suggestions_text}"
-                        + (f"\n\nAdditional context:\n{body.impact_summary}" if body.impact_summary else "")
-                    ),
-                },
-            ],
-            temperature=0.1,
-            response_format={"type": "json_object"},
+        _plan_system = (
+            "You are a senior software engineer analysing a codebase. "
+            "Given the repository file list and improvement suggestions, "
+            "identify which files need modification. "
+            'Return ONLY valid JSON: {"files": ["path/to/file1.py", ...]}'
         )
-
-        plan_raw = plan_resp.choices[0].message.content or '{"files":[]}'
-        plan_data = json.loads(plan_raw)
+        _plan_user = (
+            f"Repository files:\n{json.dumps(source_files[:200])}\n\n"
+            f"Improvement suggestions:\n{suggestions_text}"
+            + (f"\n\nAdditional context:\n{body.impact_summary}" if body.impact_summary else "")
+        )
+        try:
+            plan_raw = await call_nova_pro(
+                _plan_user, max_tokens=1024, temperature=0.1, system_prompt=_plan_system,
+            )
+        except Exception as _e:
+            logger.warning("Nova Pro file-selection failed (%s), falling back to Nova Lite", _e)
+            plan_raw = await call_nova_lite(
+                _plan_user, max_tokens=1024, temperature=0.1, system_prompt=_plan_system,
+            )
+        plan_raw = (plan_raw or "").strip()
+        # Strip markdown fences the model may wrap around the JSON
+        if plan_raw.startswith("```"):
+            plan_raw = "\n".join(plan_raw.split("\n")[1:])
+            if plan_raw.endswith("```"):
+                plan_raw = plan_raw[:-3].strip()
+        if not plan_raw:
+            plan_raw = '{"files":[]}'
+        try:
+            plan_data = json.loads(plan_raw)
+        except json.JSONDecodeError:
+            logger.error("AI returned invalid JSON for file selection: %s", plan_raw[:200])
+            plan_data = {"files": []}
         files_to_fix: list[str] = plan_data.get("files", [])
 
         # Only keep files that actually exist in the tree
@@ -277,31 +282,28 @@ async def implement_fix(
             except GitHubAPIError:
                 return (file_path, None)
 
-            fix_resp = await openai_client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "You are a senior software engineer. "
-                            "Apply the suggested improvements to the given source code. "
-                            "Return ONLY the complete improved source code — "
-                            "no explanation, no markdown fences, no commentary."
-                        ),
-                    },
-                    {
-                        "role": "user",
-                        "content": (
-                            f"## File: {file_path}\n\n"
-                            f"```\n{original}\n```\n\n"
-                            f"Suggestions to apply:\n{suggestions_text}\n\n"
-                            "Return the full improved file content."
-                        ),
-                    },
-                ],
-                temperature=0.2,
+            fix_system = (
+                "You are a senior software engineer. "
+                "Apply the suggested improvements to the given source code. "
+                "Return ONLY the complete improved source code — "
+                "no explanation, no markdown fences, no commentary."
             )
-            improved = fix_resp.choices[0].message.content or original
+            fix_user = (
+                f"## File: {file_path}\n\n"
+                f"```\n{original}\n```\n\n"
+                f"Suggestions to apply:\n{suggestions_text}\n\n"
+                "Return the full improved file content."
+            )
+            try:
+                improved = await call_nova_pro(
+                    fix_user, temperature=0.2, system_prompt=fix_system,
+                )
+            except Exception as _e:
+                logger.warning("Nova Pro fix failed for %s (%s), falling back", file_path, _e)
+                improved = await call_nova_lite(
+                    fix_user, temperature=0.2, system_prompt=fix_system,
+                )
+            improved = improved or original
             # Only count as a change if code actually differs
             if improved.strip() == original.strip():
                 return (file_path, None)
@@ -377,30 +379,28 @@ async def implement_fix(
         readme_updated = False
         if merged:
             try:
-                readme_section_resp = await openai_client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": (
-                                "You are a technical writer. Write a concise, professional "
-                                "markdown section (heading + bullet points) summarising code "
-                                "improvements that were just applied to a repository. "
-                                "Use heading level ##. Keep it under 15 lines. "
-                                "Do NOT include markdown fences around the output."
-                            ),
-                        },
-                        {
-                            "role": "user",
-                            "content": (
-                                f"Suggestions applied:\n{suggestions_text}\n\n"
-                                f"Files changed:\n{changed_list}"
-                            ),
-                        },
-                    ],
-                    temperature=0.3,
+                _cl_system = (
+                    "You are a technical writer. Write a concise, professional "
+                    "markdown section (heading + bullet points) summarising code "
+                    "improvements that were just applied to a repository. "
+                    "Use heading level ##. Keep it under 15 lines. "
+                    "Do NOT include markdown fences around the output."
                 )
-                changelog = readme_section_resp.choices[0].message.content or ""
+                _cl_user = (
+                    f"Suggestions applied:\n{suggestions_text}\n\n"
+                    f"Files changed:\n{changed_list}"
+                )
+                try:
+                    changelog = await call_nova_lite(
+                        _cl_user, temperature=0.3, system_prompt=_cl_system,
+                    )
+                except Exception as _e:
+                    logger.warning("Nova Lite changelog failed (%s), falling back to Nova Micro", _e)
+                    from app.services.bedrock_client import call_nova_micro
+                    changelog = await call_nova_micro(
+                        _cl_user, temperature=0.3, system_prompt=_cl_system,
+                    )
+                changelog = changelog or ""
 
                 # Fetch current README (may not exist)
                 existing_readme = ""

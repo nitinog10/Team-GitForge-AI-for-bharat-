@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     dynamodb_table_prefix: str = "docusense"
     s3_audio_bucket: str = "docusense-audio"
     
+    # AWS Bedrock
+    bedrock_region: str = "ap-south-1"
+    bedrock_max_concurrency: int = 6
+    
     # Redis
     redis_url: str = "redis://localhost:6379/0"
     

@@ -2,7 +2,7 @@
 Documentation Generator Service
 
 Generates structured, MNC-standard documentation for repository code files
-and folders using GPT-4o with tree-sitter AST context.
+and folders using AWS Bedrock Nova models with tree-sitter AST context.
 """
 
 import asyncio
@@ -11,11 +11,14 @@ import os
 import logging
 from typing import List, Dict, Any, Optional
 
-from langchain_openai import ChatOpenAI
-from langchain.schema import HumanMessage, SystemMessage
-
 from app.config import get_settings
 from app.services.parser import ParserService, LANGUAGE_EXTENSIONS, TEXT_EXTENSIONS
+from app.services.bedrock_client import (
+    call_nova_micro,
+    call_nova_lite,
+    call_nova_pro,
+    BEDROCK_MAX_CONCURRENCY,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -37,33 +40,27 @@ SKIP_EXTS = {
 }
 MAX_FILE_SIZE = 100_000  # 100KB max per file
 MAX_FILES = 60  # cap number of files sent to LLM
-CONCURRENCY = 6  # parallel LLM calls at once
 
 
 class DocumentationGenerator:
     """Generates structured documentation for an entire repository."""
 
     def __init__(self):
-        settings = get_settings()
-        # Use gpt-4o-mini for per-file docs (faster + cheaper) and gpt-4o for summaries
-        self.llm_fast = ChatOpenAI(
-            model="gpt-4o-mini",
-            temperature=0.2,
-            openai_api_key=settings.openai_api_key,
-            max_tokens=1500,
-            request_timeout=30,
-        )
-        self.llm = ChatOpenAI(
-            model="gpt-4o",
-            temperature=0.2,
-            openai_api_key=settings.openai_api_key,
-            max_tokens=2000,
-            request_timeout=45,
-        )
         self.parser = ParserService()
         # Per-file cache: (repo_id, file_path, content_hash) -> doc dict
         self._file_cache: Dict[str, Dict[str, Any]] = {}
-        self._semaphore = asyncio.Semaphore(CONCURRENCY)
+        self._semaphore = asyncio.Semaphore(BEDROCK_MAX_CONCURRENCY)
+
+    @staticmethod
+    def _classify_file_complexity(source: str, ast_nodes: list) -> str:
+        """Route files to the appropriate Nova model tier."""
+        line_count = source.count("\n") + 1
+        node_count = len(ast_nodes)
+        if line_count < 50 and node_count < 5:
+            return "simple"
+        if line_count > 200 or node_count > 30:
+            return "complex"
+        return "standard"
 
     # ------------------------------------------------------------------
     # Public API
@@ -256,16 +253,26 @@ Source code:
 {src_for_prompt}
 ```"""
 
+        system = "You are a documentation engineer. Output only markdown."
+        complexity = self._classify_file_complexity(source, ast_nodes)
         try:
             async with self._semaphore:
-                response = await self.llm_fast.ainvoke([
-                    SystemMessage(content="You are a documentation engineer. Output only markdown."),
-                    HumanMessage(content=prompt),
-                ])
-            text = response.content.strip()
+                if complexity == "simple":
+                    text = await call_nova_micro(prompt, max_tokens=1500, temperature=0.2, system_prompt=system)
+                elif complexity == "complex":
+                    text = await call_nova_pro(prompt, max_tokens=1500, temperature=0.2, system_prompt=system)
+                else:
+                    text = await call_nova_lite(prompt, max_tokens=1500, temperature=0.2, system_prompt=system)
+            text = text.strip()
         except Exception as exc:
-            logger.error("LLM documentation failed for %s: %s", rel_path, exc)
-            text = f"## Module Overview\n\nDocumentation generation failed: {exc}"
+            logger.warning("Primary Bedrock call failed for %s (%s), falling back", rel_path, exc)
+            try:
+                async with self._semaphore:
+                    text = await call_nova_lite(prompt, max_tokens=1500, temperature=0.2, system_prompt=system)
+                text = text.strip()
+            except Exception as exc2:
+                logger.error("Fallback Bedrock call also failed for %s: %s", rel_path, exc2)
+                text = f"## Module Overview\n\nDocumentation generation failed: {exc2}"
 
         # Split LLM markdown into sections by ## headings
         return self._split_markdown_sections(text)
@@ -314,15 +321,18 @@ File summaries:
 Include: purpose, tech stack, high-level architecture, and intended audience.
 Output only markdown (no title heading needed)."""
 
+        system = "You are a documentation engineer. Output only markdown."
         try:
-            resp = await self.llm.ainvoke([
-                SystemMessage(content="You are a documentation engineer. Output only markdown."),
-                HumanMessage(content=prompt),
-            ])
-            return resp.content.strip()
+            result = await call_nova_pro(prompt, max_tokens=2000, temperature=0.2, system_prompt=system)
+            return result.strip()
         except Exception as exc:
-            logger.error("Overview generation failed: %s", exc)
-            return f"Overview generation failed: {exc}"
+            logger.warning("Nova Pro overview failed (%s), falling back to Nova Lite", exc)
+            try:
+                result = await call_nova_lite(prompt, max_tokens=2000, temperature=0.2, system_prompt=system)
+                return result.strip()
+            except Exception as exc2:
+                logger.error("Overview generation failed: %s", exc2)
+                return f"Overview generation failed: {exc2}"
 
     async def _generate_architecture(self, tree_str: str, file_docs: List[Dict]) -> str:
         file_summaries = "\n".join(
@@ -341,15 +351,18 @@ Files:
 Cover: layers / modules, data flow, key design patterns, entry points.
 Output only markdown (no title heading needed)."""
 
+        system = "You are a documentation engineer. Output only markdown."
         try:
-            resp = await self.llm.ainvoke([
-                SystemMessage(content="You are a documentation engineer. Output only markdown."),
-                HumanMessage(content=prompt),
-            ])
-            return resp.content.strip()
+            result = await call_nova_pro(prompt, max_tokens=2000, temperature=0.2, system_prompt=system)
+            return result.strip()
         except Exception as exc:
-            logger.error("Architecture generation failed: %s", exc)
-            return f"Architecture generation failed: {exc}"
+            logger.warning("Nova Pro architecture failed (%s), falling back to Nova Lite", exc)
+            try:
+                result = await call_nova_lite(prompt, max_tokens=2000, temperature=0.2, system_prompt=system)
+                return result.strip()
+            except Exception as exc2:
+                logger.error("Architecture generation failed: %s", exc2)
+                return f"Architecture generation failed: {exc2}"
 
     async def _generate_dependencies(self, repo_path: str, file_docs: List[Dict]) -> str:
         # Try to read requirements.txt / package.json
@@ -374,15 +387,18 @@ Output only markdown (no title heading needed)."""
 Include: major libraries with their purpose, version constraints, dev vs prod deps.
 Output only markdown (no title heading needed)."""
 
+        system = "You are a documentation engineer. Output only markdown."
         try:
-            resp = await self.llm.ainvoke([
-                SystemMessage(content="You are a documentation engineer. Output only markdown."),
-                HumanMessage(content=prompt),
-            ])
-            return resp.content.strip()
+            result = await call_nova_lite(prompt, max_tokens=2000, temperature=0.2, system_prompt=system)
+            return result.strip()
         except Exception as exc:
-            logger.error("Dependencies generation failed: %s", exc)
-            return f"Dependency analysis failed: {exc}"
+            logger.warning("Nova Lite dependencies failed (%s), falling back to Nova Micro", exc)
+            try:
+                result = await call_nova_micro(prompt, max_tokens=2000, temperature=0.2, system_prompt=system)
+                return result.strip()
+            except Exception as exc2:
+                logger.error("Dependencies generation failed: %s", exc2)
+                return f"Dependency analysis failed: {exc2}"
 
     # ------------------------------------------------------------------
     # Helpers
