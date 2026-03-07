@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Upload, Loader2, CheckCircle2, ExternalLink, AlertCircle } from 'lucide-react'
 import { github, documentation, RepositoryDocumentation } from '@/lib/api'
 import toast from 'react-hot-toast'
@@ -14,6 +14,18 @@ interface PushDocsButtonProps {
 export function PushDocsButton({ repoId, fullName, docs }: PushDocsButtonProps) {
   const [isPushing, setIsPushing] = useState(false)
   const [resultUrl, setResultUrl] = useState<string | null>(null)
+
+  // Load persisted state on mount
+  useEffect(() => {
+    const [owner, repo] = fullName.split('/')
+    if (owner && repo) {
+      github.getAutomationStatus(owner, repo).then((s) => {
+        if (s.docs_url) {
+          setResultUrl(s.docs_url)
+        }
+      }).catch(() => {})
+    }
+  }, [fullName])
 
   const handlePush = async () => {
     if (!docs) {

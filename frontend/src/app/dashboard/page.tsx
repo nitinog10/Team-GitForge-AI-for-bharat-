@@ -19,11 +19,13 @@ import {
   Play,
   Settings,
   ChevronRight,
+  Upload,
 } from 'lucide-react'
 import Link from 'next/link'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { ConnectRepoModal } from '@/components/dashboard/ConnectRepoModal'
 import { CreateRepoModal } from '@/components/github/CreateRepoModal'
+import { UploadProjectModal } from '@/components/dashboard/UploadProjectModal'
 import { repositories, Repository } from '@/lib/api'
 import { useUserStore } from '@/lib/store'
 import { formatRelativeTime } from '@/lib/utils'
@@ -59,6 +61,7 @@ const langColor: Record<string, string> = {
 export default function DashboardPage() {
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [mounted, setMounted] = useState(false)
   const [connectedRepos, setConnectedRepos] = useState<Repository[]>([])
@@ -134,6 +137,13 @@ export default function DashboardPage() {
               >
                 <Settings className="w-4 h-4" />
               </Link>
+              <button
+                onClick={() => setIsUploadModalOpen(true)}
+                className="flex items-center gap-2 text-[13px] font-medium px-4 py-1.5 rounded-full bg-[var(--glass-5)] backdrop-blur-xl border border-dv-border text-dv-text/50 hover:bg-[var(--glass-10)] hover:text-dv-text/70 active:scale-[0.97] transition-all"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Upload ZIP
+              </button>
               <button
                 onClick={() => setIsCreateModalOpen(true)}
                 className="flex items-center gap-2 text-[13px] font-medium px-4 py-1.5 rounded-full bg-[var(--glass-5)] backdrop-blur-xl border border-dv-border text-dv-text/50 hover:bg-[var(--glass-10)] hover:text-dv-text/70 active:scale-[0.97] transition-all"
@@ -336,6 +346,11 @@ export default function DashboardPage() {
         onClose={() => setIsCreateModalOpen(false)}
         onCreated={fetchConnectedRepos}
       />
+      <UploadProjectModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onUploaded={fetchConnectedRepos}
+      />
     </div>
   )
 }
@@ -376,6 +391,7 @@ function StatCard({
 /* ── Repository Row (inline — no separate page) ── */
 function RepoRow({ repo, isLast }: { repo: Repository; isLast: boolean }) {
   const lc = repo.language ? langColor[repo.language] : undefined
+  const isUpload = repo.source === 'upload'
 
   return (
     <Link
@@ -384,7 +400,11 @@ function RepoRow({ repo, isLast }: { repo: Repository; isLast: boolean }) {
     >
       {/* Icon */}
       <div className="w-10 h-10 rounded-xl bg-[var(--glass-4)] border border-dv-border flex items-center justify-center flex-shrink-0 group-hover:bg-dv-accent/10 group-hover:border-dv-accent/20 transition-all">
-        <FolderGit2 className="w-[18px] h-[18px] text-dv-text/30 group-hover:text-dv-accent transition-colors" />
+        {isUpload ? (
+          <Upload className="w-[18px] h-[18px] text-dv-text/30 group-hover:text-dv-accent transition-colors" />
+        ) : (
+          <FolderGit2 className="w-[18px] h-[18px] text-dv-text/30 group-hover:text-dv-accent transition-colors" />
+        )}
       </div>
 
       {/* Info */}
@@ -393,6 +413,12 @@ function RepoRow({ repo, isLast }: { repo: Repository; isLast: boolean }) {
           <span className="text-[14px] font-semibold tracking-[-0.01em] truncate group-hover:text-dv-text transition-colors">
             {repo.full_name || repo.name}
           </span>
+          {isUpload && (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-dv-purple/10 text-dv-purple text-[11px] font-semibold flex-shrink-0">
+              <Upload className="w-3 h-3" />
+              Uploaded
+            </span>
+          )}
           {repo.is_indexed ? (
             <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-dv-success/10 text-dv-success text-[11px] font-semibold flex-shrink-0">
               <CheckCircle2 className="w-3 h-3" />

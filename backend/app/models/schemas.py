@@ -79,6 +79,7 @@ class Repository(BaseModel):
     is_indexed: bool = False
     indexed_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    source: str = "github"  # "github" or "upload"
 
 
 class RepositoryCreate(BaseModel):
@@ -95,6 +96,7 @@ class RepositoryResponse(BaseModel):
     language: Optional[str] = None
     is_indexed: bool
     indexed_at: Optional[datetime] = None
+    source: str = "github"
 
 
 # ============================================================
@@ -393,7 +395,27 @@ class ImplementFixResponse(BaseModel):
     readme_updated: bool
 
 
+class AutomationHistory(BaseModel):
+    """Persisted state of GitHub automation actions for a repo"""
+    full_name: str  # "owner/repo"
+    # Fix / PR
+    fix_pr_url: Optional[str] = None
+    fix_pr_number: Optional[int] = None
+    fix_branch: Optional[str] = None
+    fix_files_changed: int = 0
+    fix_merged: bool = False
+    fix_readme_updated: bool = False
+    fix_suggestions: List[str] = []
+    fix_created_at: Optional[str] = None
+    # Issue
+    issue_url: Optional[str] = None
+    issue_number: Optional[int] = None
+    issue_title: Optional[str] = None
+    issue_created_at: Optional[str] = None
+    # Docs push
+    docs_url: Optional[str] = None
+    docs_commit_sha: Optional[str] = None
+    docs_pushed_at: Optional[str] = None
 # Resolve forward references
 FileNode.model_rebuild()
 ASTNode.model_rebuild()
-

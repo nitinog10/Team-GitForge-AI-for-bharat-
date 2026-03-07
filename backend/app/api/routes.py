@@ -4,7 +4,7 @@ Main API Router - Combines all route modules
 
 from fastapi import APIRouter
 
-from app.api.endpoints import auth, repositories, files, walkthroughs, diagrams, sandbox, documentation, github
+from app.api.endpoints import auth, repositories, files, walkthroughs, diagrams, sandbox, documentation, github, upload
 
 router = APIRouter()
 
@@ -55,5 +55,11 @@ router.include_router(
     github.router,
     prefix="/github",
     tags=["GitHub Integration"]
+)
+
+router.include_router(
+    upload.router,
+    prefix="/project",
+    tags=["Manual Upload"]
 )
 

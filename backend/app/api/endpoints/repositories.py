@@ -247,6 +247,7 @@ async def connect_repository(
         language=repo.language,
         is_indexed=repo.is_indexed,
         indexed_at=repo.indexed_at,
+        source=repo.source,
     )
 
 
@@ -266,9 +267,9 @@ async def list_repositories(
         if repo.user_id == user.id
     ]
     
-    # Trigger background re-clone for any repos whose local files are missing
+    # Trigger background re-clone for any GitHub repos whose local files are missing
     for repo in user_repos:
-        if repo.local_path and not os.path.exists(repo.local_path):
+        if repo.source != "upload" and repo.local_path and not os.path.exists(repo.local_path):
             background_tasks.add_task(_ensure_repo_cloned, repo, user.access_token)
     
     return [
@@ -280,6 +281,7 @@ async def list_repositories(
             language=repo.language,
             is_indexed=repo.is_indexed,
             indexed_at=repo.indexed_at,
+            source=repo.source,
         )
         for repo in user_repos
     ]
@@ -333,8 +335,8 @@ async def get_repository(
     if not repo or repo.user_id != user.id:
         raise HTTPException(status_code=404, detail="Repository not found")
     
-    # Trigger background re-clone if local files are missing
-    if repo.local_path and not os.path.exists(repo.local_path):
+    # Trigger background re-clone if local files are missing (GitHub repos only)
+    if repo.source != "upload" and repo.local_path and not os.path.exists(repo.local_path):
         background_tasks.add_task(_ensure_repo_cloned, repo, user.access_token)
     
     return RepositoryResponse(
@@ -345,6 +347,7 @@ async def get_repository(
         language=repo.language,
         is_indexed=repo.is_indexed,
         indexed_at=repo.indexed_at,
+        source=repo.source,
     )
 
 

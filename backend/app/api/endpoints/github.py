@@ -23,10 +23,12 @@ from app.models.schemas import (
     CreateIssueResponse,
     ImplementFixRequest,
     ImplementFixResponse,
+    AutomationHistory,
     User,
 )
 from app.api.endpoints.auth import get_current_user
 from app.services.github_service import GitHubService, GitHubAPIError
+from app.services.persistence import save_automation_history, load_automation_history
 
 router = APIRouter()
 settings = get_settings()
@@ -114,7 +116,19 @@ async def push_readme(
     commit_sha = result.get("commit", {}).get("sha", "")
     html_url = result.get("content", {}).get("html_url", "")
 
-    return PushReadmeResponse(success=True, commit_sha=commit_sha, url=html_url)
+    response = PushReadmeResponse(success=True, commit_sha=commit_sha, url=html_url)
+
+    # Persist automation state
+    full_name = f"{body.owner}/{body.repo}"
+    history = load_automation_history(full_name)
+    history.update({
+        "docs_url": html_url,
+        "docs_commit_sha": commit_sha,
+        "docs_pushed_at": time.time(),
+    })
+    save_automation_history(full_name, history)
+
+    return response
 
 
 # ─────────────────────────────────────────────
@@ -141,11 +155,24 @@ async def create_issue(
     except GitHubAPIError as exc:
         raise HTTPException(status_code=exc.status, detail=str(exc))
 
-    return CreateIssueResponse(
+    response = CreateIssueResponse(
         issue_number=data["number"],
         url=data["html_url"],
         title=data["title"],
     )
+
+    # Persist automation state
+    full_name = f"{body.owner}/{body.repo}"
+    history = load_automation_history(full_name)
+    history.update({
+        "issue_url": data["html_url"],
+        "issue_number": data["number"],
+        "issue_title": data["title"],
+        "issue_created_at": time.time(),
+    })
+    save_automation_history(full_name, history)
+
+    return response
 
 
 # ─────────────────────────────────────────────
@@ -402,7 +429,7 @@ async def implement_fix(
             except Exception as readme_err:
                 logger.warning("README update failed: %s", readme_err)
 
-        return ImplementFixResponse(
+        response = ImplementFixResponse(
             branch=branch_name,
             pr_number=pr["number"],
             pr_url=pr["html_url"],
@@ -411,6 +438,23 @@ async def implement_fix(
             readme_updated=readme_updated,
         )
 
+        # Persist automation state
+        full_name = f"{body.owner}/{body.repo}"
+        history = load_automation_history(full_name)
+        history.update({
+            "fix_pr_url": pr["html_url"],
+            "fix_pr_number": pr["number"],
+            "fix_branch": branch_name,
+            "fix_files_changed": len(file_changes),
+            "fix_merged": merged,
+            "fix_readme_updated": readme_updated,
+            "fix_suggestions": body.suggestions,
+            "fix_created_at": time.time(),
+        })
+        save_automation_history(full_name, history)
+
+        return response
+
     except GitHubAPIError as exc:
         raise HTTPException(status_code=exc.status, detail=str(exc))
     except HTTPException:
@@ -418,3 +462,19 @@ async def implement_fix(
     except Exception as exc:
         logger.exception("implement-fix failed unexpectedly")
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+# ─────────────────────────────────────────────
+# Automation Status — saved state for all actions
+# ─────────────────────────────────────────────
+
+@router.get("/status/{owner}/{repo}")
+async def get_automation_status(
+    owner: str,
+    repo: str,
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+):
+    """Return persisted automation history for a repository."""
+    await _require_user(authorization)
+    full_name = f"{owner}/{repo}"
+    return load_automation_history(full_name)

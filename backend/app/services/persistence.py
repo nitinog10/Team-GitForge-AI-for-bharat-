@@ -539,3 +539,46 @@ def load_documentation_cache() -> Dict[str, Any]:
     except Exception as e:
         print(f"Error loading documentation cache: {e}")
         return {}
+
+
+# ---------------------------------------------------------------------------
+# GitHub Automation History Persistence
+# ---------------------------------------------------------------------------
+
+# In-memory fallback for when DynamoDB table doesn't exist yet
+_automation_history_cache: Dict[str, dict] = {}
+
+
+def save_automation_history(full_name: str, data: dict):
+    """Save automation history for a repo (owner/repo) to DynamoDB with in-memory fallback."""
+    _automation_history_cache[full_name] = data
+    try:
+        dynamodb = _get_dynamodb_resource()
+        table = dynamodb.Table(_table_name("automation_history"))
+        table.put_item(Item={
+            "full_name": full_name,
+            "data_json": json.dumps(data, default=str),
+        })
+    except Exception as e:
+        print(f"Error saving automation history to DynamoDB: {e}")
+
+
+def load_automation_history(full_name: str) -> dict:
+    """Load automation history for a repo. Falls back to in-memory cache."""
+    # Try in-memory first (fast path + covers DynamoDB-missing scenario)
+    if full_name in _automation_history_cache:
+        return _automation_history_cache[full_name]
+
+    try:
+        dynamodb = _get_dynamodb_resource()
+        table = dynamodb.Table(_table_name("automation_history"))
+        resp = table.get_item(Key={"full_name": full_name})
+        item = resp.get("Item")
+        if item:
+            data = json.loads(item.get("data_json", "{}"))
+            _automation_history_cache[full_name] = data
+            return data
+    except Exception as e:
+        print(f"Error loading automation history from DynamoDB: {e}")
+
+    return {}

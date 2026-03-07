@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   AlertCircle,
   Loader2,
@@ -119,6 +119,15 @@ export function CreateIssueButton({
 }: CreateIssueButtonProps) {
   const [isCreating, setIsCreating] = useState(false)
   const [issueUrl, setIssueUrl] = useState<string | null>(null)
+
+  // Load persisted state on mount
+  useEffect(() => {
+    github.getAutomationStatus(owner, repo).then((s) => {
+      if (s.issue_url) {
+        setIssueUrl(s.issue_url)
+      }
+    }).catch(() => {})
+  }, [owner, repo])
 
   const handleCreate = async () => {
     const { title, body, labels } = buildIssueBody(mode, impactData, codebaseData)

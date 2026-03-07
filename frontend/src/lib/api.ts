@@ -122,6 +122,7 @@ export interface Repository {
   language: string | null
   is_indexed: boolean
   indexed_at: string | null
+  source?: 'github' | 'upload'
 }
 
 export interface GitHubRepository {
@@ -159,6 +160,43 @@ export const repositories = {
   index: (id: string) => request(`/repositories/${id}/index`, { method: 'POST' }),
 
   delete: (id: string) => request(`/repositories/${id}`, { method: 'DELETE' }),
+}
+
+// ============================================================
+// Manual Upload
+// ============================================================
+
+export const upload = {
+  uploadZip: async (
+    file: File,
+    projectName: string = '',
+    description: string = ''
+  ): Promise<Repository> => {
+    const token = getAuthToken()
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('project_name', projectName)
+    formData.append('description', description)
+
+    const response = await fetch(`${API_BASE_URL}/project/upload-zip`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new APIError(
+        errorData.detail || 'Upload failed',
+        response.status,
+        errorData
+      )
+    }
+
+    return response.json()
+  },
 }
 
 // ============================================================
@@ -470,7 +508,28 @@ export interface ImplementFixResponse {
   readme_updated: boolean
 }
 
+export interface AutomationStatus {
+  fix_pr_url?: string
+  fix_pr_number?: number
+  fix_branch?: string
+  fix_files_changed?: number
+  fix_merged?: boolean
+  fix_readme_updated?: boolean
+  fix_suggestions?: string[]
+  fix_created_at?: number
+  issue_url?: string
+  issue_number?: number
+  issue_title?: string
+  issue_created_at?: number
+  docs_url?: string
+  docs_commit_sha?: string
+  docs_pushed_at?: number
+}
+
 export const github = {
+  getAutomationStatus: (owner: string, repo: string) =>
+    request<AutomationStatus>(`/github/status/${owner}/${repo}`),
+
   createRepo: (name: string, description: string, isPrivate: boolean) =>
     request<CreateRepoResponse>('/github/create-repo', {
       method: 'POST',
@@ -529,6 +588,7 @@ export const api = {
   diagrams,
   sandbox,
   documentation,
+  upload,
 }
 
 export default api

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   GitPullRequest,
   Loader2,
@@ -9,7 +9,7 @@ import {
   GitMerge,
   FileText,
 } from 'lucide-react'
-import { github, ImplementFixResponse } from '@/lib/api'
+import { github, ImplementFixResponse, AutomationStatus } from '@/lib/api'
 import toast from 'react-hot-toast'
 
 interface ImplementFixButtonProps {
@@ -32,6 +32,23 @@ export function ImplementFixButton({
   const [status, setStatus] = useState<Status>('idle')
   const [result, setResult] = useState<ImplementFixResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // Load persisted state on mount
+  useEffect(() => {
+    github.getAutomationStatus(owner, repo).then((s: AutomationStatus) => {
+      if (s.fix_pr_url) {
+        setResult({
+          branch: s.fix_branch || '',
+          pr_number: s.fix_pr_number || 0,
+          pr_url: s.fix_pr_url,
+          files_changed: s.fix_files_changed || 0,
+          merged: s.fix_merged || false,
+          readme_updated: s.fix_readme_updated || false,
+        })
+        setStatus('done')
+      }
+    }).catch(() => {})
+  }, [owner, repo])
 
   const handleImplement = async () => {
     if (!suggestions.length) return
