@@ -117,7 +117,7 @@ export default function HomePage() {
             <motion.div variants={riseUp}>
               <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--glass-6)] backdrop-blur-xl border border-dv-border text-[13px] text-dv-text/60 mb-6 shadow-[var(--inset)]">
                 <span className="w-1.5 h-1.5 rounded-full bg-dv-success animate-pulse" />
-                Powered by GPT-4o
+                Powered by team GitForge
               </span>
             </motion.div>
 
@@ -512,9 +512,8 @@ function CodePreview() {
       {lines.map((l, i) => (
         <motion.div
           key={l.n}
-          className={`flex items-center rounded-md px-2 -mx-2 transition-colors ${
-            l.hl ? 'bg-dv-accent/[0.06] border-l-2 border-dv-accent' : 'border-l-2 border-transparent'
-          }`}
+          className={`flex items-center rounded-md px-2 -mx-2 transition-colors ${l.hl ? 'bg-dv-accent/[0.06] border-l-2 border-dv-accent' : 'border-l-2 border-transparent'
+            }`}
           initial={{ opacity: 0, x: -6 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.8 + i * 0.06, duration: 0.4, ease: appleEase }}

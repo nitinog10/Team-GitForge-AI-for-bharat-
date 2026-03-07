@@ -63,9 +63,14 @@ def create_app() -> FastAPI:
     if extra_origins:
         allowed_origins.extend([o.strip() for o in extra_origins.split(",") if o.strip()])
 
+    # Regex to allow all Netlify subdomains (deploy previews + production)
+    # and AWS App Runner origins
+    origin_regex = r"https://.*\.netlify\.app"
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[o for o in allowed_origins if o],
+        allow_origin_regex=origin_regex,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
         allow_headers=["*"],
