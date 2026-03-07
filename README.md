@@ -85,6 +85,22 @@ The flagship feature. A fully custom audio-synced code player:
 - JWT-based session management with 30-day persistence
 - Supports private repositories
 
+### 🤖 GitHub Automation Suite
+Four powerful GitHub integrations built directly into the app:
+
+| Feature | What It Does |
+|---------|-------------|
+| **Create Repository** | Create new GitHub repos (public/private) from the dashboard — one-click, no context switching |
+| **Push Documentation to README** | Export AI-generated docs directly to your repo's README.md with a single click |
+| **Create Issue from Impact Analysis** | Turn risk scores, affected files, and refactor suggestions into structured GitHub Issues |
+| **Codebase Auto-Fix + PR + Merge** | AI analyses the entire repository, generates fixes across multiple files, creates a branch, opens a PR, auto-merges it, and updates the README with a changelog |
+
+#### Auto-Fix Pipeline (Full Flow)
+```
+Suggestions  →  GPT-4o identifies files  →  Parallel AI fixes  →  New branch  →  Push all changes
+    →  Open PR  →  Auto-merge (squash)  →  Update README with changelog
+```
+
 ---
 
 ## 🏗️ System Architecture
@@ -292,6 +308,7 @@ sequenceDiagram
 | **Graph** | networkx | Dependency DAG + impact analysis |
 | **Auth** | GitHub OAuth + JWT (jose) | Secure authentication |
 | **Persistence** | AWS DynamoDB + S3 | Users, repos, walkthroughs, audio survive restarts |
+| **GitHub Automation** | GitHub REST API + httpx | Create repos, PRs, merge, push files |
 
 ---
 
@@ -368,6 +385,15 @@ All authenticated endpoints require: `Authorization: Bearer <jwt_token>`
 | `POST` | `/sandbox/execute` | Execute code `{ code, language, variables }` |
 | `GET` | `/sandbox/languages` | List supported languages |
 | `POST` | `/sandbox/validate` | Validate code safety without executing |
+
+### GitHub Automation
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/github/create-repo` | Create a new GitHub repository `{ name, description, private }` |
+| `POST` | `/github/push-readme` | Push/update README.md `{ owner, repo, content, branch, message }` |
+| `POST` | `/github/create-issue` | Create GitHub issue `{ owner, repo, title, body, labels }` |
+| `POST` | `/github/implement-fix` | Codebase-wide auto-fix + PR + merge + README update `{ owner, repo, suggestions, impact_summary }` |
 
 <details>
 <summary><b>📋 Example: Generate Walkthrough Request / Response</b></summary>
@@ -543,7 +569,8 @@ DocuVerse-Ai/
 │   │   │       ├── walkthroughs.py   # Auto-Cast generation + audio
 │   │   │       ├── documentation.py  # MNC-standard doc generation
 │   │   │       ├── diagrams.py       # Mermaid diagram generation
-│   │   │       └── sandbox.py        # Isolated code execution
+│   │   │       ├── sandbox.py        # Isolated code execution
+│   │   │       └── github.py         # GitHub automation (create repo, PR, merge)
 │   │   ├── services/
 │   │   │   ├── parser.py             # Tree-sitter AST (6 languages)
 │   │   │   ├── vector_store.py       # ChromaDB embeddings
@@ -553,7 +580,8 @@ DocuVerse-Ai/
 │   │   │   ├── diagram_generator.py  # Mermaid code generation
 │   │   │   ├── dependency_analyzer.py # networkx DAG + impact
 │   │   │   ├── indexer.py            # Repo file walker + indexer
-│   │   │   └── persistence.py        # AWS DynamoDB + S3 persistence layer
+│   │   │   ├── persistence.py        # AWS DynamoDB + S3 persistence layer
+│   │   │   └── github_service.py     # GitHub REST API wrapper
 │   │   └── models/
 │   │       └── schemas.py            # 60+ Pydantic models
 │   ├── chroma_db/                    # ChromaDB persistent storage
@@ -577,10 +605,15 @@ DocuVerse-Ai/
 │   │   │   │   ├── DiagramPanel.tsx       # Mermaid rendering
 │   │   │   │   ├── SandboxPanel.tsx       # Code execution
 │   │   │   │   └── ImpactPanel.tsx        # Impact analysis UI
+│   │   │   ├── github/
+│   │   │   │   ├── CreateRepoModal.tsx     # Create repository modal
+│   │   │   │   ├── PushDocsButton.tsx      # Push docs to README
+│   │   │   │   ├── CreateIssueButton.tsx   # Create issue from impact
+│   │   │   │   └── ImplementFixButton.tsx  # Codebase auto-fix + PR
 │   │   │   ├── dashboard/
 │   │   │   └── layout/
 │   │   └── lib/
-│   │       ├── api.ts                # Type-safe API client (6 modules)
+│   │       ├── api.ts                # Type-safe API client (7 modules incl. github)
 │   │       ├── store.ts              # Zustand stores (4 stores)
 │   │       └── utils.ts
 │   ├── tailwind.config.ts
