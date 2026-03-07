@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { WalkthroughPlayer } from '@/components/walkthrough/WalkthroughPlayer'
 import { FileExplorer } from '@/components/walkthrough/FileExplorer'
 import { DiagramPanel } from '@/components/walkthrough/DiagramPanel'
@@ -17,6 +17,7 @@ import {
   Sparkles,
   AlertCircle,
   Zap,
+  X,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -55,6 +56,7 @@ export default function WalkthroughPage({ params }: { params: { id: string } }) 
   const [isLoadingCode, setIsLoadingCode] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [expandedPanel, setExpandedPanel] = useState<'diagram' | 'sandbox' | null>(null)
 
   // Fetch repo & file tree on mount
   useEffect(() => {
@@ -180,27 +182,27 @@ export default function WalkthroughPage({ params }: { params: { id: string } }) 
 
   return (
     <div className="h-screen bg-dv-bg flex flex-col">
-      {/* Header */}
-      <header className="flex items-center justify-between px-6 h-14 border-b border-dv-border/30 bg-dv-bg/80 backdrop-blur-lg flex-shrink-0">
+      {/* Header — iOS frosted glass */}
+      <header className="flex items-center justify-between px-6 h-14 glass-bar flex-shrink-0">
         <div className="flex items-center gap-4">
           <Link
             href={`/repository/${params.id}`}
-            className="p-1.5 rounded-lg hover:bg-dv-elevated transition-colors"
+            className="p-1.5 rounded-[10px] hover:bg-dv-elevated/60 transition-colors"
           >
             <ArrowLeft className="w-4 h-4 text-dv-text-muted" />
           </Link>
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-lg bg-dv-accent/10 flex items-center justify-center">
+            <div className="w-7 h-7 rounded-[8px] bg-dv-accent/10 flex items-center justify-center">
               <GitBranch className="w-3.5 h-3.5 text-dv-accent" />
             </div>
             <div>
-              <h1 className="text-sm font-medium">{repo?.name || 'Repository'}</h1>
-              <p className="text-xs text-dv-text-muted truncate max-w-[200px]">{selectedFile || 'Select a file'}</p>
+              <h1 className="text-ios-subhead font-semibold">{repo?.name || 'Repository'}</h1>
+              <p className="text-ios-caption2 text-dv-text-muted truncate max-w-[200px]">{selectedFile || 'Select a file'}</p>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="ios-segmented">
           <PanelButton
             active={activePanel === 'files'}
             onClick={() => setActivePanel('files')}
@@ -239,7 +241,7 @@ export default function WalkthroughPage({ params }: { params: { id: string } }) 
           <>
             {/* Side panel */}
             <motion.div
-              className="w-72 border-r border-dv-border/30 bg-dv-surface overflow-hidden flex-shrink-0"
+              className="w-72 border-r border-white/[0.04] bg-dv-surface/60 backdrop-blur-xl overflow-hidden flex-shrink-0"
               initial={{ x: -20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
             >
@@ -251,10 +253,10 @@ export default function WalkthroughPage({ params }: { params: { id: string } }) 
                 />
               )}
               {activePanel === 'diagram' && (
-                <DiagramPanel repositoryId={params.id} filePath={selectedFile} />
+                <DiagramPanel repositoryId={params.id} filePath={selectedFile} onExpand={() => setExpandedPanel('diagram')} />
               )}
               {activePanel === 'sandbox' && (
-                <SandboxPanel />
+                <SandboxPanel onExpand={() => setExpandedPanel('sandbox')} />
               )}
             </motion.div>
 
@@ -266,14 +268,13 @@ export default function WalkthroughPage({ params }: { params: { id: string } }) 
                   <span className="text-sm text-dv-text-muted">Loading file…</span>
                 </div>
               ) : !playerScript ? (
-                /* No walkthrough yet — show generate prompt */
                 <div className="h-full flex flex-col items-center justify-center px-8">
-                  <div className="w-14 h-14 rounded-2xl bg-dv-accent/10 flex items-center justify-center mb-4">
+                  <div className="w-14 h-14 rounded-ios bg-dv-accent/10 flex items-center justify-center mb-4">
                     <Sparkles className="w-7 h-7 text-dv-accent" />
                   </div>
-                  <h2 className="text-lg font-semibold mb-2">Generate a Walkthrough</h2>
-                  <p className="text-sm text-dv-text-muted text-center max-w-md mb-6">
-                    AI will analyze <span className="text-dv-text font-medium">{selectedFile.split('/').pop()}</span> and create
+                  <h2 className="text-ios-title3 font-semibold mb-2">Generate a Walkthrough</h2>
+                  <p className="text-ios-subhead text-dv-text-muted text-center max-w-md mb-6">
+                    AI will analyze <span className="text-dv-text font-semibold">{selectedFile.split('/').pop()}</span> and create
                     a narrated, step-by-step code walkthrough with voice.
                   </p>
                   <button
@@ -312,6 +313,42 @@ export default function WalkthroughPage({ params }: { params: { id: string } }) 
           </>
         )}
       </div>
+
+      {/* Fullscreen overlay for Diagram / Sandbox */}
+      <AnimatePresence>
+        {expandedPanel && (
+          <motion.div
+            className="fixed inset-0 z-50 flex flex-col bg-dv-bg/80 backdrop-blur-2xl"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            {/* Close bar */}
+            <div className="flex items-center justify-between px-6 h-12 border-b border-dv-border flex-shrink-0">
+              <span className="text-sm font-semibold tracking-[-0.01em] text-dv-text/90">
+                {expandedPanel === 'diagram' ? 'Diagram' : 'Sandbox'}
+              </span>
+              <button
+                onClick={() => setExpandedPanel(null)}
+                className="p-1.5 rounded-[8px] hover:bg-[var(--glass-8)] transition-colors active:scale-[0.92]"
+              >
+                <X className="w-4 h-4 text-dv-text/70" />
+              </button>
+            </div>
+
+            {/* Full-size panel */}
+            <div className="flex-1 overflow-hidden">
+              {expandedPanel === 'diagram' && (
+                <DiagramPanel repositoryId={params.id} filePath={selectedFile} />
+              )}
+              {expandedPanel === 'sandbox' && (
+                <SandboxPanel />
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -331,14 +368,12 @@ function PanelButton({
     <button
       onClick={onClick}
       className={clsx(
-        'flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm',
-        active
-          ? 'bg-dv-accent/10 text-dv-accent'
-          : 'text-dv-text-muted hover:bg-dv-elevated hover:text-dv-text'
+        'ios-segmented-item flex items-center gap-1.5',
+        active && 'active'
       )}
     >
       {icon}
-      <span className="font-medium">{label}</span>
+      <span className="font-semibold">{label}</span>
     </button>
   )
 }

@@ -47,9 +47,7 @@ export function ConnectRepoModal({ isOpen, onClose, onConnected }: ConnectRepoMo
 
   useEffect(() => {
     if (isOpen) {
-      // Small delay for animation
       requestAnimationFrame(() => setVisible(true))
-      // Fetch repositories when modal opens
       fetchRepositories()
     } else {
       setVisible(false)
@@ -93,7 +91,7 @@ export function ConnectRepoModal({ isOpen, onClose, onConnected }: ConnectRepoMo
       {/* Backdrop */}
       <div
         className={clsx(
-          'fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity duration-200',
+          'fixed inset-0 bg-[var(--bar-bg)] backdrop-blur-sm z-50 transition-opacity duration-200',
           visible ? 'opacity-100' : 'opacity-0'
         )}
         onClick={handleClose}
@@ -106,35 +104,35 @@ export function ConnectRepoModal({ isOpen, onClose, onConnected }: ConnectRepoMo
           visible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
         )}
       >
-        <div className="glass-panel overflow-hidden">
+        <div className="bg-dv-surface/80 backdrop-blur-ios border border-dv-border rounded-ios-xl shadow-ios-xl overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-dv-border">
             <div>
-              <h2 className="text-xl font-semibold">Connect Repository</h2>
-              <p className="text-sm text-dv-text-muted mt-1">
+              <h2 className="ios-title3 font-semibold">Connect Repository</h2>
+              <p className="ios-caption1 text-dv-text-muted mt-1">
                 Select a GitHub repository to connect
               </p>
             </div>
             <button
               onClick={handleClose}
-              className="p-2 rounded-lg hover:bg-dv-elevated transition-colors"
+              className="w-8 h-8 rounded-full bg-[var(--glass-6)] flex items-center justify-center hover:bg-[var(--glass-10)] transition-colors active:scale-[0.92]"
             >
-              <X className="w-5 h-5 text-dv-text-muted" />
+              <X className="w-4 h-4 text-dv-text-muted" />
             </button>
           </div>
 
           {/* Search */}
           <div className="p-4 border-b border-dv-border">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-dv-text-muted" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-dv-text-muted" />
               <input
                 type="text"
                 placeholder="Search repositories..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-dv-bg border border-dv-border rounded-xl py-3 pl-12 pr-4
-                         text-dv-text placeholder:text-dv-text-muted
-                         focus:outline-none focus:ring-2 focus:ring-dv-accent/50 focus:border-dv-accent"
+                className="w-full bg-[var(--glass-4)] border border-dv-border rounded-[12px] py-3 pl-11 pr-4
+                         text-dv-text placeholder:text-dv-text-muted ios-subhead
+                         focus:outline-none focus:ring-2 focus:ring-dv-accent/30 focus:border-dv-accent/40"
               />
             </div>
           </div>
@@ -143,18 +141,20 @@ export function ConnectRepoModal({ isOpen, onClose, onConnected }: ConnectRepoMo
           <div className="max-h-96 overflow-y-auto">
             {isLoading ? (
               <div className="p-8 text-center">
-                <Loader2 className="w-8 h-8 text-dv-accent animate-spin mx-auto mb-3" />
-                <p className="text-dv-text-muted">Loading your repositories...</p>
+                <Loader2 className="w-7 h-7 text-dv-accent animate-spin mx-auto mb-3" />
+                <p className="ios-caption1 text-dv-text-muted">Loading your repositories...</p>
               </div>
             ) : error ? (
               <div className="p-8 text-center">
-                <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-3" />
-                <p className="text-red-400 mb-4">{error}</p>
+                <div className="w-12 h-12 rounded-full bg-dv-error/15 flex items-center justify-center mx-auto mb-3">
+                  <AlertCircle className="w-6 h-6 text-dv-error" />
+                </div>
+                <p className="ios-subhead text-dv-error mb-4">{error}</p>
                 <button
                   onClick={fetchRepositories}
-                  className="btn-secondary px-4 py-2 inline-flex items-center gap-2"
+                  className="btn-secondary px-4 py-2 inline-flex items-center gap-2 ios-caption1"
                 >
-                  <RefreshCw className="w-4 h-4" />
+                  <RefreshCw className="w-3.5 h-3.5" />
                   Try Again
                 </button>
               </div>
@@ -164,38 +164,40 @@ export function ConnectRepoModal({ isOpen, onClose, onConnected }: ConnectRepoMo
                   <button
                     key={repo.id}
                     className={clsx(
-                      'w-full p-4 flex items-center gap-4 hover:bg-dv-elevated/50 hover:pl-5 transition-all border-b border-dv-border/50',
-                      selectedRepo?.id === repo.id ? 'bg-dv-accent/10' : ''
+                      'w-full p-4 flex items-center gap-4 transition-all border-b border-dv-border-subtle active:scale-[0.99]',
+                      selectedRepo?.id === repo.id
+                        ? 'bg-dv-accent/8'
+                        : 'hover:bg-[var(--glass-3)]'
                     )}
                     onClick={() => setSelectedRepo(repo)}
                   >
-                    <div className="w-10 h-10 rounded-lg bg-dv-elevated flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-[10px] bg-[var(--glass-6)] flex items-center justify-center">
                       <FolderGit2 className="w-5 h-5 text-dv-accent" />
                     </div>
 
                     <div className="flex-1 text-left">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">{repo.name}</span>
+                        <span className="ios-subhead font-medium">{repo.name}</span>
                         {repo.private ? (
-                          <Lock className="w-3.5 h-3.5 text-dv-text-muted" />
+                          <Lock className="w-3 h-3 text-dv-text-muted" />
                         ) : (
-                          <Globe className="w-3.5 h-3.5 text-dv-text-muted" />
+                          <Globe className="w-3 h-3 text-dv-text-muted" />
                         )}
                       </div>
-                      <p className="text-sm text-dv-text-muted line-clamp-1">
+                      <p className="ios-caption1 text-dv-text-muted line-clamp-1">
                         {repo.description || 'No description'}
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-3 text-sm text-dv-text-muted">
+                    <div className="flex items-center gap-3 ios-caption2 text-dv-text-muted">
                       {repo.language && (
-                        <span className="px-2 py-1 rounded-md bg-dv-elevated text-xs">
+                        <span className="px-2 py-0.5 rounded-[6px] bg-[var(--glass-6)] text-[11px]">
                           {repo.language}
                         </span>
                       )}
                       {repo.stars > 0 && (
                         <span className="flex items-center gap-1">
-                          <Star className="w-4 h-4" />
+                          <Star className="w-3.5 h-3.5" />
                           {repo.stars}
                         </span>
                       )}
@@ -207,15 +209,15 @@ export function ConnectRepoModal({ isOpen, onClose, onConnected }: ConnectRepoMo
                 ))}
 
                 {filteredRepos.length === 0 && githubRepos.length > 0 && (
-                  <div className="p-8 text-center text-dv-text-muted">
+                  <div className="p-8 text-center ios-caption1 text-dv-text-muted">
                     No repositories match your search
                   </div>
                 )}
 
                 {githubRepos.length === 0 && !isLoading && (
                   <div className="p-8 text-center text-dv-text-muted">
-                    <FolderGit2 className="w-8 h-8 mx-auto mb-3 opacity-50" />
-                    <p>No repositories found in your GitHub account</p>
+                    <FolderGit2 className="w-8 h-8 mx-auto mb-3 opacity-40" />
+                    <p className="ios-caption1">No repositories found in your GitHub account</p>
                   </div>
                 )}
               </>
@@ -225,14 +227,14 @@ export function ConnectRepoModal({ isOpen, onClose, onConnected }: ConnectRepoMo
           {/* Footer */}
           <div className="p-4 border-t border-dv-border">
             {error && !isLoading && (
-              <div className="mb-3 p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">
+              <div className="mb-3 p-2.5 rounded-[10px] bg-dv-error/10 border border-dv-error/20 text-dv-error ios-caption1 text-center">
                 {error}
               </div>
             )}
             <div className="flex items-center justify-end gap-3">
               <button
                 onClick={handleClose}
-                className="btn-secondary px-6"
+                className="btn-secondary px-5 py-2.5 ios-subhead"
                 disabled={isConnecting}
               >
                 Cancel
@@ -240,7 +242,7 @@ export function ConnectRepoModal({ isOpen, onClose, onConnected }: ConnectRepoMo
               <button
                 onClick={handleConnect}
                 disabled={!selectedRepo || isConnecting || isLoading}
-                className="btn-primary px-6 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-primary px-5 py-2.5 flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed ios-subhead"
               >
                 {isConnecting ? (
                   <>

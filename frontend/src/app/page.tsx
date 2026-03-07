@@ -1,6 +1,6 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { motion, useScroll, useTransform } from 'framer-motion'
 import {
   Play,
   Code2,
@@ -11,308 +11,524 @@ import {
   Layers,
   Zap,
   Sparkles,
-  BarChart3,
   Shield,
+  Mic,
+  BarChart3,
+  Terminal,
+  Braces,
+  ChevronRight,
+  Globe,
 } from 'lucide-react'
 import Link from 'next/link'
+import { useRef } from 'react'
 
-const container = {
+/* ── Apple-style easing ── */
+const appleEase = [0.25, 0.1, 0.25, 1] as const
+const appleSlow = [0.42, 0, 0.58, 1] as const
+
+const stagger = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.08 } },
+  show: { transition: { staggerChildren: 0.08, delayChildren: 0.15 } },
 }
-const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.25, 0.1, 0.25, 1] } },
+const riseUp = {
+  hidden: { opacity: 0, y: 32 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.7, ease: appleEase } },
+}
+const scaleIn = {
+  hidden: { opacity: 0, scale: 0.94 },
+  show: { opacity: 1, scale: 1, transition: { duration: 0.8, ease: appleEase } },
 }
 
 export default function HomePage() {
+  const heroRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ['start start', 'end start'],
+  })
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
+  const heroScale = useTransform(scrollYProgress, [0, 0.5], [1, 0.96])
+
   return (
-    <div className="min-h-screen bg-dv-bg overflow-hidden relative">
-      {/* Ambient background */}
-      <div className="fixed inset-0 dot-grid pointer-events-none" />
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[900px] h-[600px] bg-dv-accent/[0.04] rounded-full blur-[120px] pointer-events-none" />
-      <div className="fixed bottom-0 right-0 w-[600px] h-[500px] bg-dv-purple/[0.04] rounded-full blur-[100px] pointer-events-none" />
-
-      {/* Nav */}
-      <nav className="relative z-20 flex items-center justify-between max-w-7xl mx-auto px-6 lg:px-8 h-16">
-        <motion.div
-          className="flex items-center gap-2.5"
-          initial={{ opacity: 0, x: -16 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4 }}
-        >
-          <div className="w-8 h-8 rounded-lg bg-dv-accent flex items-center justify-center shadow-glow-sm">
-            <Code2 className="w-4.5 h-4.5 text-white" />
-          </div>
-          <span className="text-lg font-bold tracking-tight">
-            Docu<span className="text-dv-accent">Verse</span>
-          </span>
-        </motion.div>
-
-        <motion.div
-          className="flex items-center gap-3"
-          initial={{ opacity: 0, x: 16 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4 }}
-        >
-          <Link href="/auth/signin" className="btn-ghost hidden sm:inline-flex">
-            Sign in
-          </Link>
-          <Link href="/auth/signin" className="btn-primary flex items-center gap-2">
-            <GitBranch className="w-4 h-4" />
-            Get Started
-          </Link>
-        </motion.div>
-      </nav>
-
-      {/* Hero */}
-      <main className="relative z-10">
-        <motion.section
-          className="max-w-7xl mx-auto px-6 lg:px-8 pt-24 pb-20 text-center"
-          variants={container}
-          initial="hidden"
-          animate="show"
-        >
-          <motion.div variants={fadeUp} className="mb-6">
-            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-dv-elevated/80 border border-dv-border/40 text-xs font-medium text-dv-text-secondary">
-              <Sparkles className="w-3.5 h-3.5 text-dv-accent" />
-              AI-Powered Code Documentation
+    <div className="min-h-screen bg-dv-bg overflow-x-hidden text-dv-text selection:bg-dv-accent/30">
+      {/* ────────────── NAVIGATION ────────────── */}
+      <nav className="fixed top-0 inset-x-0 z-50 bg-[var(--bar-bg)] backdrop-blur-2xl backdrop-saturate-[1.8] border-b border-dv-border">
+        <div className="flex items-center justify-between max-w-[980px] mx-auto px-6 h-12">
+          <Link href="/" className="flex items-center gap-2 group">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-dv-accent to-dv-indigo flex items-center justify-center">
+              <Code2 className="w-3.5 h-3.5 text-dv-text" />
+            </div>
+            <span className="text-[15px] font-semibold tracking-[-0.01em] text-dv-text/90 group-hover:text-dv-text transition-colors">
+              DocuVerse
             </span>
-          </motion.div>
+          </Link>
 
-          <motion.h1
-            variants={fadeUp}
-            className="text-display-lg md:text-display-xl max-w-4xl mx-auto mb-6"
-          >
-            <span className="text-dv-text">Your code, </span>
-            <span className="gradient-text">explained</span>
-            <br />
-            <span className="text-dv-text">out loud</span>
-          </motion.h1>
+          <div className="hidden md:flex items-center gap-8">
+            {['Features', 'How it works', 'Capabilities'].map((item) => (
+              <button
+                key={item}
+                className="text-[13px] text-dv-text/50 hover:text-dv-text/90 transition-colors duration-200"
+                onClick={() => {
+                  const id = item.toLowerCase().replace(/\s/g, '-')
+                  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+                }}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
 
-          <motion.p
-            variants={fadeUp}
-            className="text-body-lg text-dv-text-secondary max-w-2xl mx-auto mb-10 leading-relaxed"
-          >
-            Connect a repository and let an AI senior engineer narrate your code.
-            Interactive walkthroughs with audio, diagrams, and a live sandbox — generated in seconds.
-          </motion.p>
-
-          <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <div className="flex items-center gap-3">
             <Link
               href="/auth/signin"
-              className="btn-primary flex items-center gap-2 px-7 py-3 text-base"
+              className="text-[13px] text-dv-text/50 hover:text-dv-text/90 transition-colors hidden sm:block"
             >
-              <Play className="w-4 h-4" />
-              Start for free
+              Sign in
             </Link>
             <Link
-              href="/dashboard"
-              className="btn-secondary flex items-center gap-2 px-7 py-3 text-base"
+              href="/auth/signin"
+              className="text-[13px] font-medium bg-[var(--glass-12)] backdrop-blur-xl border border-dv-border text-dv-text px-4 py-1.5 rounded-full hover:bg-[var(--glass-16)] hover:border-dv-border active:scale-[0.97] transition-all shadow-[var(--btn-solid-shadow)]"
             >
-              Dashboard
-              <ArrowRight className="w-4 h-4" />
+              Get Started
             </Link>
+          </div>
+        </div>
+      </nav>
+
+      {/* ────────────── HERO ────────────── */}
+      <div ref={heroRef}>
+        <motion.section
+          className="relative pt-32 pb-4 overflow-hidden"
+          style={{ opacity: heroOpacity, scale: heroScale }}
+        >
+          {/* Ambient glow */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-[-30%] left-1/2 -translate-x-1/2 w-[1100px] h-[600px] bg-gradient-to-b from-dv-accent/[0.08] to-transparent rounded-full blur-[120px]" />
+            <div className="absolute top-[-10%] left-[20%] w-[400px] h-[400px] bg-dv-purple/[0.04] rounded-full blur-[100px]" />
+            <div className="absolute top-[10%] right-[15%] w-[300px] h-[300px] bg-dv-indigo/[0.04] rounded-full blur-[80px]" />
+          </div>
+
+          <motion.div
+            className="relative z-10 max-w-[980px] mx-auto px-6 text-center"
+            variants={stagger}
+            initial="hidden"
+            animate="show"
+          >
+            {/* Pill badge */}
+            <motion.div variants={riseUp}>
+              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--glass-6)] backdrop-blur-xl border border-dv-border text-[13px] text-dv-text/60 mb-6 shadow-[var(--inset)]">
+                <span className="w-1.5 h-1.5 rounded-full bg-dv-success animate-pulse" />
+                Powered by GPT-4o
+              </span>
+            </motion.div>
+
+            {/* Hero title — Apple's signature large type */}
+            <motion.h1
+              variants={riseUp}
+              className="text-[clamp(2.5rem,7vw,5.5rem)] font-bold tracking-[-0.04em] leading-[0.95] mb-6"
+            >
+              <span className="text-dv-text">Code that</span>
+              <br />
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-dv-accent via-dv-purple to-[#ff375f]">
+                speaks for itself
+              </span>
+            </motion.h1>
+
+            {/* Subtitle */}
+            <motion.p
+              variants={riseUp}
+              className="text-[clamp(1.05rem,2.2vw,1.3rem)] leading-relaxed text-dv-text/50 max-w-2xl mx-auto mb-10 font-normal tracking-[-0.01em]"
+            >
+              Connect a GitHub repository. An AI senior engineer narrates every file
+              with synced audio, interactive diagrams, and a live sandbox.
+            </motion.p>
+
+            {/* CTA buttons */}
+            <motion.div variants={riseUp} className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link
+                href="/auth/signin"
+                className="group flex items-center gap-2.5 bg-[var(--glass-10)] backdrop-blur-2xl border border-dv-border text-dv-text font-semibold text-[15px] px-8 py-3.5 rounded-full hover:bg-[var(--glass-16)] hover:border-dv-border hover:shadow-[var(--card-shadow)] active:scale-[0.97] transition-all shadow-[var(--card-shadow)]"
+              >
+                <Play className="w-4 h-4" />
+                Start for free
+                <ArrowRight className="w-4 h-4 -ml-0.5 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-2 text-[15px] font-medium text-dv-text/60 hover:text-dv-text px-6 py-3.5 rounded-full bg-[var(--glass-4)] backdrop-blur-xl border border-dv-border hover:bg-[var(--glass-8)] hover:border-dv-border transition-all"
+              >
+                View dashboard
+                <ChevronRight className="w-4 h-4" />
+              </Link>
+            </motion.div>
           </motion.div>
         </motion.section>
+      </div>
 
-        {/* Code preview card */}
-        <motion.section
-          className="max-w-5xl mx-auto px-6 lg:px-8 pb-28"
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45, duration: 0.6 }}
-        >
-          <div className="glass-panel overflow-hidden shadow-elevated">
-            {/* Top bar */}
-            <div className="flex items-center gap-3 px-5 py-3 border-b border-dv-border/30">
-              <div className="flex gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-dv-error/60" />
-                <div className="w-3 h-3 rounded-full bg-dv-warning/60" />
-                <div className="w-3 h-3 rounded-full bg-dv-success/60" />
-              </div>
-              <div className="flex items-center gap-2 text-sm text-dv-text-muted">
-                <FileCode className="w-3.5 h-3.5" />
+      {/* ────────────── HERO DEVICE PREVIEW ────────────── */}
+      <motion.section
+        className="relative z-10 max-w-[860px] mx-auto px-6 pt-16 pb-32"
+        initial={{ opacity: 0, y: 60 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5, duration: 0.9, ease: appleEase }}
+      >
+        <div className="relative rounded-2xl overflow-hidden border border-dv-border bg-[var(--glass-4)] backdrop-blur-2xl shadow-[var(--card-shadow)]">
+          {/* Window chrome */}
+          <div className="flex items-center gap-2.5 px-5 py-3 bg-[var(--glass-3)] backdrop-blur-xl border-b border-dv-border">
+            <div className="flex gap-[7px]">
+              <div className="w-[11px] h-[11px] rounded-full bg-[#ff5f57]" />
+              <div className="w-[11px] h-[11px] rounded-full bg-[#febc2e]" />
+              <div className="w-[11px] h-[11px] rounded-full bg-[#28c840]" />
+            </div>
+            <div className="flex-1 flex justify-center">
+              <div className="flex items-center gap-2 px-3 py-1 rounded-md bg-[var(--glass-4)] text-[12px] text-dv-text/30">
+                <FileCode className="w-3 h-3" />
                 auth_service.py
               </div>
-              <div className="flex-1" />
-              <div className="flex items-center gap-2 badge-accent">
-                <Volume2 className="w-3 h-3" />
-                AI Narrating
-              </div>
             </div>
-
-            {/* Code */}
-            <div className="font-mono text-sm p-5 bg-dv-bg/50">
-              <CodePreview />
-            </div>
-
-            {/* Player bar */}
-            <div className="flex items-center gap-4 px-5 py-3 border-t border-dv-border/30 bg-dv-surface/50">
-              <button className="w-9 h-9 rounded-full bg-dv-accent flex items-center justify-center hover:bg-dv-accent-hover transition-colors shadow-glow-sm">
-                <Play className="w-4 h-4 text-white ml-0.5" />
-              </button>
-              <div className="flex-1 h-1.5 bg-dv-elevated rounded-full overflow-hidden">
-                <motion.div
-                  className="h-full bg-dv-accent rounded-full"
-                  initial={{ width: '0%' }}
-                  animate={{ width: '38%' }}
-                  transition={{ duration: 2.5, delay: 1 }}
-                />
-              </div>
-              <span className="text-xs text-dv-text-muted font-mono tabular-nums">1:24 / 4:02</span>
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-dv-accent bg-dv-accent/10 px-2.5 py-1 rounded-full">
+              <Volume2 className="w-3 h-3" />
+              LIVE
             </div>
           </div>
-        </motion.section>
 
-        {/* Features */}
-        <section className="max-w-7xl mx-auto px-6 lg:px-8 pb-32">
+          {/* Code content */}
+          <div className="font-mono text-[13px] leading-[1.8] p-6 bg-[var(--code-bg)] backdrop-blur-sm">
+            <CodePreview />
+          </div>
+
+          {/* Player transport */}
+          <div className="flex items-center gap-4 px-5 py-3.5 bg-[var(--glass-3)] backdrop-blur-xl border-t border-dv-border">
+            <button className="w-8 h-8 rounded-full bg-dv-accent flex items-center justify-center hover:brightness-110 transition-all">
+              <Play className="w-3.5 h-3.5 text-dv-text ml-[1px]" />
+            </button>
+            <div className="flex-1 relative h-[3px] bg-[var(--glass-8)] rounded-full overflow-hidden">
+              <motion.div
+                className="absolute inset-y-0 left-0 bg-dv-accent rounded-full"
+                initial={{ width: '0%' }}
+                animate={{ width: '42%' }}
+                transition={{ duration: 3, delay: 1.2, ease: appleSlow }}
+              />
+            </div>
+            <span className="text-[11px] text-dv-text/25 font-mono tabular-nums tracking-wide">
+              1:24 / 3:18
+            </span>
+          </div>
+        </div>
+
+        {/* Reflection glow under card */}
+        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 w-[70%] h-[120px] bg-dv-accent/[0.04] rounded-full blur-[60px] pointer-events-none" />
+      </motion.section>
+
+      {/* ────────────── HOW IT WORKS ────────────── */}
+      <section id="how-it-works" className="relative py-28">
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'var(--section-band)' }} />
+        <div className="relative z-10 max-w-[980px] mx-auto px-6">
           <motion.div
-            className="text-center mb-14"
-            initial={{ opacity: 0, y: 20 }}
+            className="text-center mb-20"
+            initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, margin: '-100px' }}
+            transition={{ duration: 0.7, ease: appleEase }}
           >
-            <h2 className="text-display-sm mb-3">How it works</h2>
-            <p className="text-dv-text-secondary text-body-lg max-w-xl mx-auto">
-              Three steps from repository to narrated walkthrough
+            <p className="text-[13px] font-semibold text-dv-accent tracking-wide uppercase mb-3">
+              How it works
             </p>
+            <h2 className="text-[clamp(1.75rem,4vw,3rem)] font-bold tracking-[-0.03em] leading-tight">
+              Three steps to understanding
+            </h2>
           </motion.div>
 
           <motion.div
             className="grid md:grid-cols-3 gap-5"
-            variants={container}
+            variants={stagger}
             initial="hidden"
             whileInView="show"
-            viewport={{ once: true }}
+            viewport={{ once: true, margin: '-80px' }}
           >
             {[
               {
-                icon: <GitBranch className="w-5 h-5" />,
+                icon: <GitBranch className="w-6 h-6" />,
                 step: '01',
                 title: 'Connect',
-                desc: 'Link your GitHub repository. We clone and parse the full codebase using tree-sitter AST analysis.',
-                color: 'bg-dv-accent/10 text-dv-accent',
+                desc: 'Link your GitHub repo. We parse every file with tree-sitter AST analysis in seconds.',
+                color: '#0a84ff',
               },
               {
-                icon: <Sparkles className="w-5 h-5" />,
+                icon: <Sparkles className="w-6 h-6" />,
                 step: '02',
                 title: 'Generate',
-                desc: 'GPT-4o writes a structured walkthrough script with audio narration synced to each code section.',
-                color: 'bg-dv-purple/10 text-dv-purple',
+                desc: 'GPT-4o writes narration scripts. AI voice syncs perfectly to each code section.',
+                color: '#bf5af2',
               },
               {
-                icon: <Play className="w-5 h-5" />,
+                icon: <Play className="w-6 h-6" />,
                 step: '03',
                 title: 'Play',
-                desc: 'Watch the walkthrough with auto-scrolling code, voice narration, Mermaid diagrams, and a live sandbox.',
-                color: 'bg-dv-success/10 text-dv-success',
+                desc: 'Auto-scrolling code, voice narration, Mermaid diagrams, and a live sandbox.',
+                color: '#30d158',
               },
             ].map((f) => (
-              <motion.div key={f.step} variants={fadeUp} className="card-hover group">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className={`w-10 h-10 rounded-xl ${f.color} flex items-center justify-center`}>
-                    {f.icon}
+              <motion.div
+                key={f.step}
+                variants={riseUp}
+                className="group relative p-8 rounded-2xl bg-[var(--glass-3)] backdrop-blur-2xl border border-dv-border hover:border-dv-border hover:bg-[var(--glass-6)] transition-all duration-500 shadow-[var(--inset)]"
+              >
+                {/* Hover glow */}
+                <div
+                  className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
+                  style={{
+                    background: `radial-gradient(300px circle at 50% 0%, ${f.color}08, transparent 70%)`,
+                  }}
+                />
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-8">
+                    <div
+                      className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                      style={{ backgroundColor: `${f.color}12`, color: f.color }}
+                    >
+                      {f.icon}
+                    </div>
+                    <span className="text-[13px] font-mono text-dv-text/15">{f.step}</span>
                   </div>
-                  <span className="text-xs font-mono text-dv-text-muted">{f.step}</span>
+                  <h3 className="text-[22px] font-bold tracking-[-0.02em] mb-2">{f.title}</h3>
+                  <p className="text-[15px] text-dv-text/40 leading-relaxed">{f.desc}</p>
                 </div>
-                <h3 className="text-lg font-semibold mb-2">{f.title}</h3>
-                <p className="text-sm text-dv-text-secondary leading-relaxed">{f.desc}</p>
               </motion.div>
             ))}
           </motion.div>
-        </section>
+        </div>
+      </section>
 
-        {/* Capability strip */}
-        <section className="border-t border-dv-border/30 py-16">
-          <div className="max-w-7xl mx-auto px-6 lg:px-8">
-            <motion.div
-              className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6"
-              variants={container}
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true }}
-            >
-              {[
-                { icon: <Volume2 className="w-4 h-4" />, label: 'Voice Narration', sub: 'Browser TTS' },
-                { icon: <Layers className="w-4 h-4" />, label: 'Mermaid Diagrams', sub: 'Auto-generated' },
-                { icon: <Zap className="w-4 h-4" />, label: 'Live Sandbox', sub: 'Run code instantly' },
-                { icon: <Shield className="w-4 h-4" />, label: 'Private Repos', sub: 'GitHub OAuth' },
-              ].map((c) => (
-                <motion.div
-                  key={c.label}
-                  variants={fadeUp}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl bg-dv-surface/50 border border-dv-border/30"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-dv-elevated flex items-center justify-center text-dv-text-secondary">
-                    {c.icon}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">{c.label}</p>
-                    <p className="text-xs text-dv-text-muted">{c.sub}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section className="border-t border-dv-border/30 py-20">
+      {/* ────────────── FEATURES BENTO GRID ────────────── */}
+      <section id="features" className="relative py-28">
+        <div className="max-w-[980px] mx-auto px-6">
           <motion.div
-            className="max-w-2xl mx-auto text-center px-6"
-            initial={{ opacity: 0, y: 20 }}
+            className="text-center mb-20"
+            initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, margin: '-100px' }}
+            transition={{ duration: 0.7, ease: appleEase }}
           >
-            <h2 className="text-display-sm mb-4">Ready to understand your code?</h2>
-            <p className="text-dv-text-secondary mb-8">Connect a repo and generate your first walkthrough in under a minute.</p>
-            <Link href="/auth/signin" className="btn-primary inline-flex items-center gap-2 px-8 py-3 text-base">
-              Get Started Free
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+            <p className="text-[13px] font-semibold text-dv-purple tracking-wide uppercase mb-3">
+              Features
+            </p>
+            <h2 className="text-[clamp(1.75rem,4vw,3rem)] font-bold tracking-[-0.03em] leading-tight">
+              Everything you need, nothing you don&apos;t
+            </h2>
           </motion.div>
-        </section>
 
-        {/* Footer */}
-        <footer className="border-t border-dv-border/30 py-8">
-          <div className="max-w-7xl mx-auto px-6 lg:px-8 flex items-center justify-between text-xs text-dv-text-muted">
-            <span>© 2025 DocuVerse</span>
-            <span className="flex items-center gap-1">
-              Built with <Sparkles className="w-3 h-3 text-dv-accent" /> by DocuSense AI
+          {/* Bento Grid */}
+          <motion.div
+            className="grid grid-cols-2 md:grid-cols-4 gap-4"
+            variants={stagger}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: '-80px' }}
+          >
+            {/* Large — Voice Narration */}
+            <motion.div
+              variants={scaleIn}
+              className="col-span-2 row-span-2 group relative p-8 rounded-3xl bg-gradient-to-br from-[var(--glass-6)] to-[var(--glass-2)] backdrop-blur-2xl border border-dv-border hover:border-dv-border hover:bg-gradient-to-br hover:from-[var(--glass-8)] hover:to-[var(--glass-3)] transition-all duration-500 overflow-hidden shadow-[var(--inset)]"
+            >
+              <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-dv-accent/[0.06] rounded-full blur-[80px] pointer-events-none" />
+              <div className="relative">
+                <div className="w-14 h-14 rounded-2xl bg-dv-accent/10 flex items-center justify-center mb-6 text-dv-accent">
+                  <Mic className="w-7 h-7" />
+                </div>
+                <h3 className="text-[26px] font-bold tracking-[-0.02em] mb-3">AI Voice Narration</h3>
+                <p className="text-[15px] text-dv-text/40 leading-relaxed max-w-sm">
+                  An AI senior engineer narrates your code with perfectly synced audio playback and line-by-line highlighting.
+                </p>
+                {/* Mini waveform */}
+                <div className="flex items-end gap-[3px] mt-8 h-10">
+                  {Array.from({ length: 24 }).map((_, i) => (
+                    <motion.div
+                      key={i}
+                      className="w-[3px] rounded-full bg-dv-accent/40"
+                      initial={{ height: '20%' }}
+                      animate={{ height: `${20 + Math.random() * 80}%` }}
+                      transition={{
+                        duration: 0.6 + Math.random() * 0.8,
+                        repeat: Infinity,
+                        repeatType: 'reverse',
+                        delay: i * 0.04,
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Small — Diagrams */}
+            <motion.div
+              variants={scaleIn}
+              className="col-span-1 group relative p-6 rounded-3xl bg-[var(--glass-3)] backdrop-blur-2xl border border-dv-border hover:border-dv-border hover:bg-[var(--glass-6)] transition-all duration-500 shadow-[var(--inset)]"
+            >
+              <div className="w-10 h-10 rounded-xl bg-dv-purple/10 backdrop-blur-sm flex items-center justify-center mb-4 text-dv-purple">
+                <Layers className="w-5 h-5" />
+              </div>
+              <h3 className="text-[17px] font-bold tracking-[-0.01em] mb-1">Diagrams</h3>
+              <p className="text-[13px] text-dv-text/35 leading-relaxed">
+                Auto-generated Mermaid flow & architecture diagrams
+              </p>
+            </motion.div>
+
+            {/* Small — Sandbox */}
+            <motion.div
+              variants={scaleIn}
+              className="col-span-1 group relative p-6 rounded-3xl bg-[var(--glass-3)] backdrop-blur-2xl border border-dv-border hover:border-dv-border hover:bg-[var(--glass-6)] transition-all duration-500 shadow-[var(--inset)]"
+            >
+              <div className="w-10 h-10 rounded-xl bg-[#ffd60a]/10 backdrop-blur-sm flex items-center justify-center mb-4 text-[#ffd60a]">
+                <Terminal className="w-5 h-5" />
+              </div>
+              <h3 className="text-[17px] font-bold tracking-[-0.01em] mb-1">Live Sandbox</h3>
+              <p className="text-[13px] text-dv-text/35 leading-relaxed">
+                Run and test code snippets instantly, right inside the walkthrough
+              </p>
+            </motion.div>
+
+            {/* Medium — AST Parsing */}
+            <motion.div
+              variants={scaleIn}
+              className="col-span-2 group relative p-6 rounded-3xl bg-[var(--glass-3)] backdrop-blur-2xl border border-dv-border hover:border-dv-border hover:bg-[var(--glass-6)] transition-all duration-500 shadow-[var(--inset)]"
+            >
+              <div className="flex items-start gap-5">
+                <div className="w-10 h-10 rounded-xl bg-dv-success/10 flex items-center justify-center text-dv-success shrink-0">
+                  <Braces className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-[17px] font-bold tracking-[-0.01em] mb-1">Tree-sitter AST</h3>
+                  <p className="text-[13px] text-dv-text/35 leading-relaxed">
+                    Accurate function, class, and scope extraction across Python, JS, TS, Java, Go, and Rust
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ────────────── CAPABILITIES ────────────── */}
+      <section id="capabilities" className="relative py-20">
+        <div className="max-w-[980px] mx-auto px-6">
+          <motion.div
+            className="flex items-center gap-8 justify-center flex-wrap"
+            variants={stagger}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: '-60px' }}
+          >
+            {[
+              { icon: <Volume2 className="w-4 h-4" />, label: 'Voice Narration', color: '#0a84ff' },
+              { icon: <Layers className="w-4 h-4" />, label: 'Mermaid Diagrams', color: '#bf5af2' },
+              { icon: <Zap className="w-4 h-4" />, label: 'Live Sandbox', color: '#ffd60a' },
+              { icon: <Shield className="w-4 h-4" />, label: 'Private Repos', color: '#30d158' },
+              { icon: <BarChart3 className="w-4 h-4" />, label: 'Impact Analysis', color: '#ff9f0a' },
+              { icon: <Globe className="w-4 h-4" />, label: 'Multi-language', color: '#64d2ff' },
+            ].map((c) => (
+              <motion.div
+                key={c.label}
+                variants={riseUp}
+                className="flex items-center gap-2.5 px-4 py-2 rounded-full border border-dv-border bg-[var(--glass-4)] backdrop-blur-xl hover:bg-[var(--glass-8)] hover:border-dv-border transition-all shadow-[var(--inset)]"
+              >
+                <span style={{ color: c.color }}>{c.icon}</span>
+                <span className="text-[13px] font-medium text-dv-text/50">{c.label}</span>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ────────────── CTA ────────────── */}
+      <section className="relative py-32">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-t from-dv-accent/[0.05] to-transparent rounded-full blur-[100px]" />
+        </div>
+        <motion.div
+          className="relative z-10 max-w-lg mx-auto text-center px-6"
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.7, ease: appleEase }}
+        >
+          <h2 className="text-[clamp(1.75rem,4vw,3rem)] font-bold tracking-[-0.03em] leading-tight mb-4">
+            Ready to hear
+            <br />
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-dv-accent to-dv-purple">
+              your code?
             </span>
-          </div>
-        </footer>
-      </main>
+          </h2>
+          <p className="text-[15px] text-dv-text/40 mb-10 leading-relaxed">
+            Connect a repo. Get your first walkthrough in under 60 seconds.
+          </p>
+          <Link
+            href="/auth/signin"
+            className="group inline-flex items-center gap-2 bg-[var(--glass-10)] backdrop-blur-2xl border border-dv-border text-dv-text font-semibold text-[15px] px-8 py-3.5 rounded-full hover:bg-[var(--glass-16)] hover:border-dv-border hover:shadow-[var(--card-shadow)] active:scale-[0.97] transition-all shadow-[var(--card-shadow)]"
+          >
+            Get Started Free
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+          </Link>
+        </motion.div>
+      </section>
+
+      {/* ────────────── FOOTER ────────────── */}
+      <footer className="border-t border-dv-border-subtle py-6">
+        <div className="max-w-[980px] mx-auto px-6 flex items-center justify-between">
+          <span className="text-[12px] text-dv-text/20">© 2025 DocuVerse</span>
+          <span className="flex items-center gap-1.5 text-[12px] text-dv-text/20">
+            Built with <Sparkles className="w-3 h-3 text-dv-accent/50" /> DocuSense AI
+          </span>
+        </div>
+      </footer>
     </div>
   )
 }
 
+/* ── Code Preview Component ── */
 function CodePreview() {
   const lines = [
-    { n: 1, code: 'class AuthService:', hl: false },
-    { n: 2, code: '    """Handle JWT-based authentication."""', hl: false },
-    { n: 3, code: '', hl: false },
-    { n: 4, code: '    async def verify_token(self, token: str) -> User:', hl: true },
-    { n: 5, code: '        payload = jwt.decode(token, self.secret)', hl: true },
-    { n: 6, code: '        user_id = payload.get("sub")', hl: true },
-    { n: 7, code: '        if not user_id:', hl: false },
-    { n: 8, code: '            raise InvalidCredentials("Missing subject")', hl: false },
-    { n: 9, code: '        return await self.repo.get(user_id)', hl: false },
+    { n: 1, code: 'class AuthService:', hl: false, tokens: [{ text: 'class', type: 'kw' }, { text: ' AuthService', type: 'cls' }, { text: ':', type: 'op' }] },
+    { n: 2, code: '    """Handle JWT authentication."""', hl: false, tokens: [{ text: '    ', type: '' }, { text: '"""Handle JWT authentication."""', type: 'str' }] },
+    { n: 3, code: '', hl: false, tokens: [] },
+    { n: 4, code: '    async def verify_token(self, token):', hl: true, tokens: [{ text: '    ', type: '' }, { text: 'async', type: 'kw' }, { text: ' ', type: '' }, { text: 'def', type: 'kw' }, { text: ' ', type: '' }, { text: 'verify_token', type: 'fn' }, { text: '(self, token):', type: '' }] },
+    { n: 5, code: '        payload = jwt.decode(token)', hl: true, tokens: [{ text: '        payload = jwt.', type: '' }, { text: 'decode', type: 'fn' }, { text: '(token)', type: '' }] },
+    { n: 6, code: '        user_id = payload.get("sub")', hl: true, tokens: [{ text: '        user_id = payload.', type: '' }, { text: 'get', type: 'fn' }, { text: '(', type: '' }, { text: '"sub"', type: 'str' }, { text: ')', type: '' }] },
+    { n: 7, code: '        if not user_id:', hl: false, tokens: [{ text: '        ', type: '' }, { text: 'if', type: 'kw' }, { text: ' ', type: '' }, { text: 'not', type: 'kw' }, { text: ' user_id:', type: '' }] },
+    { n: 8, code: '            raise InvalidCredentials()', hl: false, tokens: [{ text: '            ', type: '' }, { text: 'raise', type: 'kw' }, { text: ' ', type: '' }, { text: 'InvalidCredentials', type: 'cls' }, { text: '()', type: '' }] },
+    { n: 9, code: '        return await self.repo.get(id)', hl: false, tokens: [{ text: '        ', type: '' }, { text: 'return', type: 'kw' }, { text: ' ', type: '' }, { text: 'await', type: 'kw' }, { text: ' self.repo.', type: '' }, { text: 'get', type: 'fn' }, { text: '(id)', type: '' }] },
   ]
 
+  const tokenColor: Record<string, string> = {
+    kw: 'var(--code-kw)',
+    str: 'var(--code-str)',
+    fn: 'var(--code-fn)',
+    cls: 'var(--code-cls)',
+    op: 'var(--code-op)',
+    '': 'var(--code-plain)',
+  }
+
   return (
-    <div>
+    <div className="space-y-0.5">
       {lines.map((l, i) => (
         <motion.div
           key={l.n}
-          className={`code-line py-0.5 px-2 -mx-2 rounded-sm ${l.hl ? 'highlighted' : ''}`}
-          initial={{ opacity: 0, x: -8 }}
+          className={`flex items-center rounded-md px-2 -mx-2 transition-colors ${
+            l.hl ? 'bg-dv-accent/[0.06] border-l-2 border-dv-accent' : 'border-l-2 border-transparent'
+          }`}
+          initial={{ opacity: 0, x: -6 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.7 + i * 0.07 }}
+          transition={{ delay: 0.8 + i * 0.06, duration: 0.4, ease: appleEase }}
         >
-          <span className="code-line-number">{l.n}</span>
-          <span className={l.hl ? 'text-dv-text' : 'text-dv-text-secondary'}>{l.code}</span>
+          <span className="w-8 text-right text-[12px] text-dv-text/15 select-none pr-4 shrink-0 font-mono">
+            {l.n}
+          </span>
+          <span className="flex-1 whitespace-pre">
+            {l.tokens.map((t, ti) => (
+              <span key={ti} style={{ color: tokenColor[t.type] || 'var(--code-plain)' }}>
+                {t.text}
+              </span>
+            ))}
+          </span>
         </motion.div>
       ))}
     </div>

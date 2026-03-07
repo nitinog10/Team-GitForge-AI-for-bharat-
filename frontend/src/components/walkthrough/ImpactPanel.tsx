@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { motion } from 'framer-motion'
 import {
   AlertCircle,
   BarChart3,
@@ -12,9 +13,14 @@ import {
   RefreshCw,
   Search,
   Zap,
+  Shield,
+  Network,
+  Layers,
+  ArrowRight,
 } from 'lucide-react'
-import { clsx } from 'clsx'
 import { files, ImpactAnalysis, CodebaseImpact } from '@/lib/api'
+
+const ease = [0.25, 0.1, 0.25, 1] as const
 
 type AnalysisMode = 'file' | 'codebase'
 
@@ -97,6 +103,17 @@ export function ImpactPanel({ repositoryId, filePath }: ImpactPanelProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mermaidCode])
 
+  // Re-render mermaid when theme changes
+  useEffect(() => {
+    const html = document.documentElement
+    const observer = new MutationObserver(() => {
+      if (mermaidCode) renderMermaid(mermaidCode)
+    })
+    observer.observe(html, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mermaidCode])
+
   useEffect(() => {
     return () => stopBrief()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -104,19 +121,53 @@ export function ImpactPanel({ repositoryId, filePath }: ImpactPanelProps) {
 
   const renderMermaid = async (code: string) => {
     if (!containerRef.current) {
-      // Container not in DOM yet — retry after a paint frame
       await new Promise((r) => requestAnimationFrame(r))
       if (!containerRef.current) return
     }
     containerRef.current.innerHTML = ''
     setGraphStatus('rendering')
 
+    const isLight = document.documentElement.classList.contains('light')
+
     try {
       const mermaid = (await import('mermaid')).default
       mermaid.initialize({
         startOnLoad: false,
-        theme: 'dark',
+        theme: isLight ? 'default' : 'dark',
         securityLevel: 'loose',
+        themeVariables: isLight
+          ? {
+              primaryColor: '#ff9f0a',
+              primaryTextColor: '#1c1917',
+              primaryBorderColor: '#ff9f0a',
+              lineColor: 'rgba(0,0,0,0.15)',
+              secondaryColor: '#f5f5f4',
+              tertiaryColor: '#fafaf9',
+              background: '#ffffff',
+              mainBkg: '#f5f5f4',
+              nodeBorder: 'rgba(0,0,0,0.1)',
+              clusterBkg: 'rgba(255,149,0,0.06)',
+              clusterBorder: 'rgba(255,149,0,0.15)',
+              titleColor: '#1c1917',
+              edgeLabelBackground: '#f5f5f4',
+              nodeTextColor: '#1c1917',
+            }
+          : {
+              primaryColor: '#ff9f0a',
+              primaryTextColor: '#ffffff',
+              primaryBorderColor: '#ff9f0a',
+              lineColor: 'rgba(255,255,255,0.15)',
+              secondaryColor: '#1c1c1e',
+              tertiaryColor: '#1c1c1e',
+              background: '#000000',
+              mainBkg: '#1c1c1e',
+              nodeBorder: 'rgba(255,255,255,0.1)',
+              clusterBkg: 'rgba(255,159,10,0.06)',
+              clusterBorder: 'rgba(255,159,10,0.15)',
+              titleColor: '#ffffff',
+              edgeLabelBackground: '#1c1c1e',
+              nodeTextColor: '#ffffff',
+            },
         flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
       })
 
@@ -125,7 +176,6 @@ export function ImpactPanel({ repositoryId, filePath }: ImpactPanelProps) {
       const { svg } = await mermaid.render(id, code)
       if (containerRef.current) {
         containerRef.current.innerHTML = svg
-        // Make the SVG fill the container
         const svgEl = containerRef.current.querySelector('svg')
         if (svgEl) {
           svgEl.style.width = '100%'
@@ -140,7 +190,7 @@ export function ImpactPanel({ repositoryId, filePath }: ImpactPanelProps) {
       setGraphStatus('error')
       if (containerRef.current) {
         containerRef.current.innerHTML =
-          `<div class="flex flex-col items-center gap-2 py-8"><p class="text-sm text-red-400">Could not render impact graph</p><pre class="text-xs text-dv-text-muted bg-dv-surface p-3 rounded-lg max-w-xl overflow-auto max-h-40">${code}</pre></div>`
+          `<div class="flex flex-col items-center gap-2 py-8"><p class="text-[13px] text-dv-error">Could not render impact graph</p><pre class="text-[11px] text-dv-text/30 bg-[var(--glass-4)] p-3 rounded-xl max-w-xl overflow-auto max-h-40">${code}</pre></div>`
       }
     }
   }
@@ -174,223 +224,249 @@ export function ImpactPanel({ repositoryId, filePath }: ImpactPanelProps) {
     setIsSpeaking(true)
   }
 
-  const riskOf = (level: string) =>
+  const riskColor = (level: string) =>
     level === 'high'
-      ? 'bg-red-500/10 text-red-400 border-red-500/30'
+      ? { bg: 'bg-dv-error/10', text: 'text-dv-error', border: 'border-dv-error/20' }
       : level === 'medium'
-      ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
-      : 'bg-green-500/10 text-green-400 border-green-500/30'
+      ? { bg: 'bg-dv-orange/10', text: 'text-dv-orange', border: 'border-dv-orange/20' }
+      : { bg: 'bg-dv-success/10', text: 'text-dv-success', border: 'border-dv-success/20' }
+
+  const riskClasses = (level: string) => {
+    const c = riskColor(level)
+    return `${c.bg} ${c.text} ${c.border}`
+  }
 
   /* =========== RENDER =========== */
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-dv-surface">
-      {/* ── Top toolbar ── */}
-      <div className="px-6 py-3 border-b border-dv-border/30 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <Zap className="w-5 h-5 text-dv-accent" />
-          <h2 className="text-base font-semibold">Change Impact Simulator</h2>
-        </div>
+    <div className="h-full flex flex-col overflow-hidden bg-dv-bg relative">
+      {/* Ambient glows */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-[-20%] right-[10%] w-[500px] h-[400px] bg-dv-orange/[0.03] rounded-full blur-[140px]" />
+        <div className="absolute bottom-[-10%] left-[20%] w-[400px] h-[300px] bg-dv-error/[0.02] rounded-full blur-[120px]" />
+      </div>
 
-        <div className="flex items-center gap-4">
-          {/* Mode toggle */}
-          <div className="flex rounded-lg bg-dv-elevated p-0.5">
-            <button
-              onClick={() => setMode('codebase')}
-              className={clsx(
-                'flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
-                mode === 'codebase'
-                  ? 'bg-dv-accent/15 text-dv-accent'
-                  : 'text-dv-text-muted hover:text-dv-text'
-              )}
-            >
-              <BarChart3 className="w-4 h-4" />
-              Codebase
-            </button>
-            <button
-              onClick={() => setMode('file')}
-              className={clsx(
-                'flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
-                mode === 'file'
-                  ? 'bg-dv-accent/15 text-dv-accent'
-                  : 'text-dv-text-muted hover:text-dv-text'
-              )}
-            >
-              <FileCode className="w-4 h-4" />
-              Single File
-            </button>
+      {/* -- Top toolbar � frosted glass -- */}
+      <div className="relative z-10 bg-[var(--bar-bg)] backdrop-blur-2xl backdrop-saturate-[1.8] border-b border-dv-border flex-shrink-0">
+        <div className="flex items-center justify-between px-6 h-14">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-dv-orange/10 flex items-center justify-center">
+              <Zap className="w-4 h-4 text-dv-orange" />
+            </div>
+            <div>
+              <h2 className="text-[15px] font-semibold tracking-[-0.01em]">Change Impact</h2>
+              <p className="text-[11px] text-dv-text/25 tracking-[-0.01em]">
+                {mode === 'codebase' ? 'Full codebase analysis' : filePath.split('/').pop() || 'Select a file'}
+              </p>
+            </div>
           </div>
 
-          {/* Symbol input (file mode) */}
-          {mode === 'file' && (
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-dv-text-muted" />
-                <input
-                  type="text"
-                  value={symbol}
-                  onChange={(e) => setSymbol(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') runFileAnalysis()
-                  }}
-                  placeholder="Symbol (optional)"
-                  className="w-48 pl-8 pr-3 py-1.5 text-sm bg-dv-elevated border border-dv-border/40 rounded-lg focus:outline-none focus:border-dv-accent/50 placeholder:text-dv-text-muted/60"
-                />
-              </div>
+          <div className="flex items-center gap-3">
+            {/* Mode toggle � glass segmented */}
+            <div className="flex items-center bg-[var(--glass-4)] border border-dv-border rounded-xl p-0.5">
               <button
-                onClick={() => runFileAnalysis()}
-                disabled={isLoading}
-                className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium rounded-lg bg-dv-accent/10 text-dv-accent hover:bg-dv-accent/20 transition-colors disabled:opacity-50"
+                onClick={() => setMode('codebase')}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-[10px] text-[12px] font-semibold transition-all ${
+                  mode === 'codebase'
+                    ? 'bg-[var(--glass-10)] text-dv-text shadow-[var(--inset)]'
+                    : 'text-dv-text/30 hover:text-dv-text/50'
+                }`}
               >
-                {isLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-4 h-4" />
-                )}
-                Analyze
+                <BarChart3 className="w-3 h-3" />
+                Codebase
+              </button>
+              <button
+                onClick={() => setMode('file')}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-[10px] text-[12px] font-semibold transition-all ${
+                  mode === 'file'
+                    ? 'bg-[var(--glass-10)] text-dv-text shadow-[var(--inset)]'
+                    : 'text-dv-text/30 hover:text-dv-text/50'
+                }`}
+              >
+                <FileCode className="w-3 h-3" />
+                File
               </button>
             </div>
-          )}
 
-          {/* Refresh (codebase mode) */}
-          {mode === 'codebase' && (
-            <button
-              onClick={runCodebaseAnalysis}
-              disabled={isLoading}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium rounded-lg bg-dv-accent/10 text-dv-accent hover:bg-dv-accent/20 transition-colors disabled:opacity-50"
-            >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4" />
-              )}
-              Refresh
-            </button>
-          )}
+            {/* Symbol input (file mode) */}
+            {mode === 'file' && (
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-dv-text/20" />
+                  <input
+                    type="text"
+                    value={symbol}
+                    onChange={(e) => setSymbol(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') runFileAnalysis()
+                    }}
+                    placeholder="Symbol (optional)"
+                    className="w-44 pl-8 pr-3 py-1.5 text-[12px] bg-[var(--glass-4)] border border-dv-border rounded-xl text-dv-text placeholder:text-dv-text/20 focus:outline-none focus:ring-1 focus:ring-dv-orange/25 focus:border-dv-orange/30 transition-all"
+                  />
+                </div>
+                <button
+                  onClick={() => runFileAnalysis()}
+                  disabled={isLoading}
+                  className="flex items-center gap-1.5 px-4 py-1.5 text-[12px] font-semibold rounded-xl bg-dv-orange/10 text-dv-orange hover:bg-dv-orange/15 transition-all disabled:opacity-40 active:scale-[0.97]"
+                >
+                  {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                  Analyze
+                </button>
+              </div>
+            )}
+
+            {/* Refresh (codebase mode) */}
+            {mode === 'codebase' && (
+              <button
+                onClick={runCodebaseAnalysis}
+                disabled={isLoading}
+                className="flex items-center gap-1.5 px-4 py-1.5 text-[12px] font-semibold rounded-xl bg-dv-orange/10 text-dv-orange hover:bg-dv-orange/15 transition-all disabled:opacity-40 active:scale-[0.97]"
+              >
+                {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                Refresh
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* ── Body ── */}
-      <div className="flex-1 overflow-y-auto">
+      {/* -- Body -- */}
+      <div className="relative z-[1] flex-1 overflow-y-auto">
         {/* Loading */}
         {isLoading && (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-6 h-6 text-dv-accent animate-spin mr-3" />
-            <span className="text-sm text-dv-text-muted">
-              Analyzing {mode === 'codebase' ? 'codebase' : 'file'} impact…
+          <div className="flex flex-col items-center justify-center py-24">
+            <div className="w-14 h-14 rounded-2xl bg-dv-orange/10 flex items-center justify-center mb-4">
+              <Loader2 className="w-6 h-6 text-dv-orange animate-spin" />
+            </div>
+            <span className="text-[14px] text-dv-text/25">
+              Analyzing {mode === 'codebase' ? 'codebase' : 'file'} impact�
             </span>
           </div>
         )}
 
         {/* Error */}
         {error && !isLoading && (
-          <div className="mx-6 mt-6 flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
-            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-red-300">{error}</p>
-          </div>
+          <motion.div
+            className="mx-6 mt-6 flex items-start gap-3 p-4 rounded-2xl bg-dv-error/8 border border-dv-error/10"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, ease }}
+          >
+            <AlertCircle className="w-5 h-5 text-dv-error flex-shrink-0 mt-0.5" />
+            <p className="text-[13px] text-dv-error/80">{error}</p>
+          </motion.div>
         )}
 
         {/* ============ CODEBASE MODE ============ */}
         {mode === 'codebase' && codebaseImpact && !isLoading && (
-          <div className="p-6 space-y-6">
-            {/* ── Row 1: Risk + Stats ── */}
-            <div className="flex items-center gap-6">
+          <div className="px-6 py-8 space-y-6 max-w-[1100px] mx-auto">
+
+            {/* -- Risk badge + score -- */}
+            <motion.div
+              className="flex items-center gap-5"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease }}
+            >
               <span
-                className={clsx(
-                  'px-4 py-2 text-sm font-bold rounded-full border',
-                  riskOf(codebaseImpact.overall_risk_level)
-                )}
+                className={`px-5 py-2 text-[12px] font-bold uppercase tracking-[0.05em] rounded-full border ${riskClasses(codebaseImpact.overall_risk_level)}`}
               >
-                {codebaseImpact.overall_risk_level.toUpperCase()} RISK
+                {codebaseImpact.overall_risk_level} risk
               </span>
-              <span className="text-sm text-dv-text-muted">
-                Score: <span className="font-semibold text-dv-text">{codebaseImpact.overall_risk_score}</span>/100
-              </span>
-            </div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-[28px] font-bold tracking-[-0.03em] text-dv-text">{codebaseImpact.overall_risk_score}</span>
+                <span className="text-[13px] text-dv-text/25">/100</span>
+              </div>
+            </motion.div>
 
-            {/* Stats row */}
-            <div className="grid grid-cols-4 gap-4">
-              <div className="p-4 rounded-xl bg-dv-elevated border border-dv-border/20">
-                <p className="text-xs text-dv-text-muted uppercase tracking-wider mb-1">Source Files</p>
-                <p className="text-2xl font-bold text-dv-text">{codebaseImpact.total_files}</p>
-              </div>
-              <div className="p-4 rounded-xl bg-dv-elevated border border-dv-border/20">
-                <p className="text-xs text-dv-text-muted uppercase tracking-wider mb-1">Dependencies</p>
-                <p className="text-2xl font-bold text-dv-text">{codebaseImpact.total_dependencies}</p>
-              </div>
-              <div className="p-4 rounded-xl bg-dv-elevated border border-dv-border/20">
-                <p className="text-xs text-dv-text-muted uppercase tracking-wider mb-1">Components</p>
-                <p className="text-2xl font-bold text-dv-text">{codebaseImpact.connected_components}</p>
-              </div>
-              <div className="p-4 rounded-xl bg-dv-elevated border border-dv-border/20">
-                <p className="text-xs text-dv-text-muted uppercase tracking-wider mb-1">Is DAG</p>
-                <p className="text-2xl font-bold text-dv-text">{codebaseImpact.is_dag ? 'Yes' : 'No'}</p>
-              </div>
-            </div>
+            {/* -- Stat cards � bento row -- */}
+            <motion.div
+              className="grid grid-cols-4 gap-3"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.05, ease }}
+            >
+              <StatCard label="Source Files" value={codebaseImpact.total_files} icon={<FileCode className="w-[18px] h-[18px]" />} color="#0a84ff" />
+              <StatCard label="Dependencies" value={codebaseImpact.total_dependencies} icon={<Network className="w-[18px] h-[18px]" />} color="#ff9f0a" />
+              <StatCard label="Components" value={codebaseImpact.connected_components} icon={<Layers className="w-[18px] h-[18px]" />} color="#bf5af2" />
+              <StatCard label="Is DAG" value={codebaseImpact.is_dag ? 'Yes' : 'No'} icon={<Shield className="w-[18px] h-[18px]" />} color={codebaseImpact.is_dag ? '#30d158' : '#ff453a'} />
+            </motion.div>
 
-            {/* ── Row 2: Two-column — Brief + Recommended Actions ── */}
-            <div className="grid grid-cols-2 gap-5">
-              {/* Brief + audio */}
-              <div className="rounded-xl bg-dv-elevated border border-dv-border/20 p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-dv-text">Codebase Brief</h3>
+            {/* -- Brief + Recommended Actions -- */}
+            <motion.div
+              className="grid grid-cols-2 gap-4"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1, ease }}
+            >
+              {/* Brief */}
+              <div className="rounded-2xl bg-[var(--glass-3)] backdrop-blur-2xl border border-dv-border p-5 shadow-[var(--inset)]">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-[13px] font-semibold text-dv-text/90">Codebase Brief</h3>
                   <button
                     onClick={toggleBrief}
-                    className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-lg bg-dv-accent/10 text-dv-accent hover:bg-dv-accent/20 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1 text-[11px] font-semibold rounded-lg bg-dv-orange/10 text-dv-orange hover:bg-dv-orange/15 transition-all active:scale-[0.95]"
                   >
                     {isSpeaking ? (
-                      <><Pause className="w-3.5 h-3.5" /> Stop</>
+                      <><Pause className="w-3 h-3" /> Stop</>
                     ) : (
-                      <><Play className="w-3.5 h-3.5" /> Listen</>
+                      <><Play className="w-3 h-3" /> Listen</>
                     )}
                   </button>
                 </div>
-                <p className="text-sm text-dv-text-muted leading-relaxed">
+                <p className="text-[13px] text-dv-text/35 leading-relaxed">
                   {codebaseImpact.brief_script}
                 </p>
               </div>
 
               {/* Recommended actions */}
-              <div className="rounded-xl bg-dv-elevated border border-dv-border/20 p-5">
-                <h3 className="text-sm font-semibold text-dv-text mb-3">Recommended Actions</h3>
-                <ol className="space-y-2">
+              <div className="rounded-2xl bg-[var(--glass-3)] backdrop-blur-2xl border border-dv-border p-5 shadow-[var(--inset)]">
+                <h3 className="text-[13px] font-semibold text-dv-text/90 mb-4">Recommended Actions</h3>
+                <ol className="space-y-2.5">
                   {codebaseImpact.recommended_actions.map((step, i) => (
-                    <li key={i} className="flex items-start gap-2.5 text-sm text-dv-text-muted">
-                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-dv-accent/10 text-dv-accent text-xs flex items-center justify-center font-semibold mt-0.5">
+                    <li key={i} className="flex items-start gap-2.5">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-dv-orange/10 text-dv-orange text-[10px] flex items-center justify-center font-bold mt-0.5">
                         {i + 1}
                       </span>
-                      <span className="leading-relaxed">{step}</span>
+                      <span className="text-[13px] text-dv-text/35 leading-relaxed">{step}</span>
                     </li>
                   ))}
                 </ol>
               </div>
-            </div>
+            </motion.div>
 
-            {/* ── Row 4: Two-column — Hotspots + Most Imported ── */}
-            <div className="grid grid-cols-2 gap-5">
+            {/* -- Hotspots + Most Imported -- */}
+            <motion.div
+              className="grid grid-cols-2 gap-4"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.15, ease }}
+            >
               {/* Hotspot files */}
               {codebaseImpact.hotspots.length > 0 && (
-                <div className="rounded-xl bg-dv-elevated border border-dv-border/20 p-5">
-                  <h3 className="text-sm font-semibold text-dv-text mb-3">
-                    Hotspot Files ({codebaseImpact.hotspots.length})
-                  </h3>
-                  <div className="space-y-1.5 max-h-72 overflow-y-auto">
-                    {codebaseImpact.hotspots.map((hs) => (
+                <div className="rounded-2xl bg-[var(--glass-3)] backdrop-blur-2xl border border-dv-border overflow-hidden shadow-[var(--inset)]">
+                  <div className="px-5 py-3.5 border-b border-dv-border-subtle">
+                    <h3 className="text-[13px] font-semibold text-dv-text/90">
+                      Hotspot Files
+                      <span className="ml-2 text-[11px] font-normal text-dv-text/20">{codebaseImpact.hotspots.length}</span>
+                    </h3>
+                  </div>
+                  <div className="max-h-72 overflow-y-auto">
+                    {codebaseImpact.hotspots.map((hs, i) => (
                       <div
                         key={hs.file}
-                        className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-dv-surface/50 transition-colors"
+                        className={`flex items-center justify-between px-5 py-2.5 hover:bg-[var(--glass-3)] transition-colors ${
+                          i < codebaseImpact.hotspots.length - 1 ? 'border-b border-dv-border-subtle' : ''
+                        }`}
                       >
-                        <span className="text-xs text-dv-text-muted font-mono truncate flex-1 mr-3">
+                        <span className="text-[12px] text-dv-text/35 font-mono truncate flex-1 mr-3">
                           {hs.file}
                         </span>
                         <div className="flex items-center gap-3 flex-shrink-0">
-                          <span className="text-xs text-dv-text-muted">
+                          <span className="text-[11px] text-dv-text/20">
                             {hs.direct_dependents}d / {hs.total_affected}a
                           </span>
                           <span
-                            className={clsx(
-                              'px-2 py-0.5 text-xs font-semibold rounded border',
-                              riskOf(hs.risk_level)
-                            )}
+                            className={`px-2 py-0.5 text-[10px] font-bold rounded-md border ${riskClasses(hs.risk_level)}`}
                           >
                             {hs.risk_score}
                           </span>
@@ -403,165 +479,217 @@ export function ImpactPanel({ repositoryId, filePath }: ImpactPanelProps) {
 
               {/* Most imported */}
               {codebaseImpact.most_imported.length > 0 && (
-                <div className="rounded-xl bg-dv-elevated border border-dv-border/20 p-5">
-                  <h3 className="text-sm font-semibold text-dv-text mb-3">Most Imported Files</h3>
-                  <div className="space-y-1.5 max-h-72 overflow-y-auto">
-                    {codebaseImpact.most_imported.map((m) => (
+                <div className="rounded-2xl bg-[var(--glass-3)] backdrop-blur-2xl border border-dv-border overflow-hidden shadow-[var(--inset)]">
+                  <div className="px-5 py-3.5 border-b border-dv-border-subtle">
+                    <h3 className="text-[13px] font-semibold text-dv-text/90">Most Imported</h3>
+                  </div>
+                  <div className="max-h-72 overflow-y-auto">
+                    {codebaseImpact.most_imported.map((m, i) => (
                       <div
                         key={m.file}
-                        className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-dv-surface/50 transition-colors text-xs"
+                        className={`flex items-center justify-between px-5 py-2.5 hover:bg-[var(--glass-3)] transition-colors ${
+                          i < codebaseImpact.most_imported.length - 1 ? 'border-b border-dv-border-subtle' : ''
+                        }`}
                       >
-                        <span className="text-dv-text-muted font-mono truncate flex-1 mr-3">
+                        <span className="text-[12px] text-dv-text/35 font-mono truncate flex-1 mr-3">
                           {m.file}
                         </span>
-                        <span className="text-dv-accent font-semibold whitespace-nowrap">{m.import_count} imports</span>
+                        <span className="text-[11px] text-dv-accent font-semibold whitespace-nowrap">{m.import_count} imports</span>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-            </div>
+            </motion.div>
 
-            {/* Circular deps */}
+            {/* -- Circular deps -- */}
             {codebaseImpact.circular_dependencies.length > 0 && (
-              <div className="rounded-xl bg-yellow-500/10 border border-yellow-500/20 p-5">
-                <h3 className="text-sm font-semibold text-yellow-400 mb-3 flex items-center gap-2">
+              <motion.div
+                className="rounded-2xl bg-dv-orange/[0.04] border border-dv-orange/10 p-5 shadow-[inset_0_1px_0_rgba(255,159,10,0.04)]"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2, ease }}
+              >
+                <h3 className="text-[13px] font-semibold text-dv-orange mb-3 flex items-center gap-2">
                   <AlertCircle className="w-4 h-4" />
-                  Circular Dependencies ({codebaseImpact.circular_dependencies.length})
+                  Circular Dependencies
+                  <span className="text-[11px] font-normal text-dv-orange/50">{codebaseImpact.circular_dependencies.length}</span>
                 </h3>
                 <ul className="space-y-1.5 max-h-48 overflow-y-auto">
                   {codebaseImpact.circular_dependencies.map((cycle, i) => (
-                    <li key={i} className="text-xs text-yellow-300/80 font-mono">
-                      {cycle.join(' \u2192 ')} \u2192 {cycle[0]}
+                    <li key={i} className="flex items-center gap-1.5 text-[12px] text-dv-orange/60 font-mono">
+                      {cycle.map((item, j) => (
+                        <span key={j} className="flex items-center gap-1.5">
+                          {j > 0 && <ArrowRight className="w-3 h-3 text-dv-orange/30" />}
+                          <span>{item}</span>
+                        </span>
+                      ))}
+                      <ArrowRight className="w-3 h-3 text-dv-orange/30" />
+                      <span>{cycle[0]}</span>
                     </li>
                   ))}
                 </ul>
-              </div>
+              </motion.div>
             )}
 
-            {/* ── Graph (at bottom) ── */}
-            <div className="rounded-xl bg-dv-elevated border border-dv-border/20 p-5">
-              <h3 className="text-sm font-semibold text-dv-text mb-3 flex items-center gap-2">
-                <GitBranch className="w-4 h-4 text-dv-accent" />
-                Codebase Impact Graph
-              </h3>
+            {/* -- Graph -- */}
+            <motion.div
+              className="rounded-2xl bg-[var(--glass-3)] backdrop-blur-2xl border border-dv-border overflow-hidden shadow-[var(--inset)]"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.25, ease }}
+            >
+              <div className="px-5 py-3.5 border-b border-dv-border-subtle flex items-center gap-2">
+                <GitBranch className="w-4 h-4 text-dv-orange" />
+                <h3 className="text-[13px] font-semibold text-dv-text/90">Codebase Impact Graph</h3>
+              </div>
               {graphStatus === 'rendering' && (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-5 h-5 text-dv-accent animate-spin mr-2" />
-                  <span className="text-sm text-dv-text-muted">Rendering graph…</span>
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="w-5 h-5 text-dv-orange animate-spin mr-2.5" />
+                  <span className="text-[13px] text-dv-text/25">Rendering graph�</span>
                 </div>
               )}
               <div
                 ref={containerRef}
-                className="w-full min-h-[420px] overflow-auto [&_svg]:w-full [&_svg]:min-h-[400px] [&_svg]:h-auto"
+                className="w-full min-h-[420px] overflow-auto p-4 [&_svg]:w-full [&_svg]:min-h-[400px] [&_svg]:h-auto"
               />
-            </div>
+            </motion.div>
           </div>
         )}
 
         {/* ============ FILE MODE ============ */}
         {mode === 'file' && impact && !isLoading && (
-          <div className="p-6 space-y-6">
-            {/* ── Risk + symbol ── */}
-            <div className="flex items-center gap-6">
+          <div className="px-6 py-8 space-y-6 max-w-[1100px] mx-auto">
+
+            {/* -- Risk badge + score + symbol -- */}
+            <motion.div
+              className="flex items-center gap-5"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease }}
+            >
               <span
-                className={clsx(
-                  'px-4 py-2 text-sm font-bold rounded-full border',
-                  riskOf(impact.risk_level)
-                )}
+                className={`px-5 py-2 text-[12px] font-bold uppercase tracking-[0.05em] rounded-full border ${riskClasses(impact.risk_level)}`}
               >
-                {impact.risk_level.toUpperCase()} RISK
+                {impact.risk_level} risk
               </span>
-              <span className="text-sm text-dv-text-muted">
-                Score: <span className="font-semibold text-dv-text">{impact.risk_score}</span>/100
-              </span>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-[28px] font-bold tracking-[-0.03em] text-dv-text">{impact.risk_score}</span>
+                <span className="text-[13px] text-dv-text/25">/100</span>
+              </div>
               {impact.symbol_context && (
-                <span className="text-sm text-dv-text-muted ml-auto">
-                  {impact.symbol_context.type}: <span className="font-medium text-dv-text">{impact.symbol_context.name}</span>
+                <span className="ml-auto text-[12px] text-dv-text/25">
+                  {impact.symbol_context.type}: <span className="text-dv-text/60 font-medium">{impact.symbol_context.name}</span>
                 </span>
               )}
-            </div>
+            </motion.div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-4 gap-4">
-              <div className="p-4 rounded-xl bg-dv-elevated border border-dv-border/20">
-                <p className="text-xs text-dv-text-muted uppercase tracking-wider mb-1">Direct Dependents</p>
-                <p className="text-2xl font-bold text-dv-text">{impact.direct_dependents.length}</p>
-              </div>
-              <div className="p-4 rounded-xl bg-dv-elevated border border-dv-border/20">
-                <p className="text-xs text-dv-text-muted uppercase tracking-wider mb-1">Total Affected</p>
-                <p className="text-2xl font-bold text-dv-text">{impact.total_affected}</p>
-              </div>
-            </div>
+            {/* -- Stats -- */}
+            <motion.div
+              className="grid grid-cols-4 gap-3"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.05, ease }}
+            >
+              <StatCard label="Direct Dependents" value={impact.direct_dependents.length} icon={<GitBranch className="w-[18px] h-[18px]" />} color="#0a84ff" />
+              <StatCard label="Total Affected" value={impact.total_affected} icon={<Network className="w-[18px] h-[18px]" />} color="#ff9f0a" />
+            </motion.div>
 
-            {/* ── Two-column: Brief + Refactor Steps ── */}
-            <div className="grid grid-cols-2 gap-5">
-              {/* Brief + audio */}
-              <div className="rounded-xl bg-dv-elevated border border-dv-border/20 p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-dv-text">Impact Brief</h3>
+            {/* -- Brief + Refactor Steps -- */}
+            <motion.div
+              className="grid grid-cols-2 gap-4"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1, ease }}
+            >
+              {/* Brief */}
+              <div className="rounded-2xl bg-[var(--glass-3)] backdrop-blur-2xl border border-dv-border p-5 shadow-[var(--inset)]">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-[13px] font-semibold text-dv-text/90">Impact Brief</h3>
                   <button
                     onClick={toggleBrief}
-                    className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-lg bg-dv-accent/10 text-dv-accent hover:bg-dv-accent/20 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1 text-[11px] font-semibold rounded-lg bg-dv-orange/10 text-dv-orange hover:bg-dv-orange/15 transition-all active:scale-[0.95]"
                   >
                     {isSpeaking ? (
-                      <><Pause className="w-3.5 h-3.5" /> Stop</>
+                      <><Pause className="w-3 h-3" /> Stop</>
                     ) : (
-                      <><Play className="w-3.5 h-3.5" /> Listen</>
+                      <><Play className="w-3 h-3" /> Listen</>
                     )}
                   </button>
                 </div>
-                <p className="text-sm text-dv-text-muted leading-relaxed">
+                <p className="text-[13px] text-dv-text/35 leading-relaxed">
                   {impact.brief_script}
                 </p>
               </div>
 
               {/* Refactor steps */}
-              <div className="rounded-xl bg-dv-elevated border border-dv-border/20 p-5">
-                <h3 className="text-sm font-semibold text-dv-text mb-3">Recommended Refactor Steps</h3>
-                <ol className="space-y-2">
+              <div className="rounded-2xl bg-[var(--glass-3)] backdrop-blur-2xl border border-dv-border p-5 shadow-[var(--inset)]">
+                <h3 className="text-[13px] font-semibold text-dv-text/90 mb-4">Recommended Refactor Steps</h3>
+                <ol className="space-y-2.5">
                   {impact.recommended_refactor_steps.map((step, i) => (
-                    <li key={i} className="flex items-start gap-2.5 text-sm text-dv-text-muted">
-                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-dv-accent/10 text-dv-accent text-xs flex items-center justify-center font-semibold mt-0.5">
+                    <li key={i} className="flex items-start gap-2.5">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-dv-orange/10 text-dv-orange text-[10px] flex items-center justify-center font-bold mt-0.5">
                         {i + 1}
                       </span>
-                      <span className="leading-relaxed">{step}</span>
+                      <span className="text-[13px] text-dv-text/35 leading-relaxed">{step}</span>
                     </li>
                   ))}
                 </ol>
               </div>
-            </div>
+            </motion.div>
 
-            {/* Circular dependencies warning */}
+            {/* -- Circular deps -- */}
             {impact.circular_dependencies.length > 0 && (
-              <div className="rounded-xl bg-yellow-500/10 border border-yellow-500/20 p-5">
-                <h3 className="text-sm font-semibold text-yellow-400 mb-3 flex items-center gap-2">
+              <motion.div
+                className="rounded-2xl bg-dv-orange/[0.04] border border-dv-orange/10 p-5 shadow-[inset_0_1px_0_rgba(255,159,10,0.04)]"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.15, ease }}
+              >
+                <h3 className="text-[13px] font-semibold text-dv-orange mb-3 flex items-center gap-2">
                   <AlertCircle className="w-4 h-4" />
-                  Circular Dependencies Detected
+                  Circular Dependencies
                 </h3>
                 <ul className="space-y-1.5">
                   {impact.circular_dependencies.map((cycle, i) => (
-                    <li key={i} className="text-xs text-yellow-300/80 font-mono">
-                      {cycle.join(' \u2192 ')} \u2192 {cycle[0]}
+                    <li key={i} className="flex items-center gap-1.5 text-[12px] text-dv-orange/60 font-mono">
+                      {cycle.map((item, j) => (
+                        <span key={j} className="flex items-center gap-1.5">
+                          {j > 0 && <ArrowRight className="w-3 h-3 text-dv-orange/30" />}
+                          <span>{item}</span>
+                        </span>
+                      ))}
+                      <ArrowRight className="w-3 h-3 text-dv-orange/30" />
+                      <span>{cycle[0]}</span>
                     </li>
                   ))}
                 </ul>
-              </div>
+              </motion.div>
             )}
 
-            {/* ── Two-column: Dependents + Affected files ── */}
-            <div className="grid grid-cols-2 gap-5">
+            {/* -- Dependents + Affected files -- */}
+            <motion.div
+              className="grid grid-cols-2 gap-4"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2, ease }}
+            >
               {/* Direct dependents */}
               {impact.direct_dependents.length > 0 && (
-                <div className="rounded-xl bg-dv-elevated border border-dv-border/20 p-5">
-                  <h3 className="text-sm font-semibold text-dv-text mb-3">
-                    Direct Dependents ({impact.direct_dependents.length})
-                  </h3>
-                  <ul className="space-y-1.5 max-h-60 overflow-y-auto">
-                    {impact.direct_dependents.map((dep) => (
+                <div className="rounded-2xl bg-[var(--glass-3)] backdrop-blur-2xl border border-dv-border overflow-hidden shadow-[var(--inset)]">
+                  <div className="px-5 py-3.5 border-b border-dv-border-subtle">
+                    <h3 className="text-[13px] font-semibold text-dv-text/90">
+                      Direct Dependents
+                      <span className="ml-2 text-[11px] font-normal text-dv-text/20">{impact.direct_dependents.length}</span>
+                    </h3>
+                  </div>
+                  <ul className="max-h-60 overflow-y-auto">
+                    {impact.direct_dependents.map((dep, i) => (
                       <li
                         key={dep}
-                        className="text-xs text-dv-text-muted font-mono truncate py-1 px-2 rounded hover:bg-dv-surface/50"
+                        className={`text-[12px] text-dv-text/35 font-mono truncate py-2.5 px-5 hover:bg-[var(--glass-3)] transition-colors ${
+                          i < impact.direct_dependents.length - 1 ? 'border-b border-dv-border-subtle' : ''
+                        }`}
                       >
                         {dep}
                       </li>
@@ -572,15 +700,20 @@ export function ImpactPanel({ repositoryId, filePath }: ImpactPanelProps) {
 
               {/* Affected files */}
               {impact.affected_files.length > 0 && (
-                <div className="rounded-xl bg-dv-elevated border border-dv-border/20 p-5">
-                  <h3 className="text-sm font-semibold text-dv-text mb-3">
-                    All Affected Files ({impact.affected_files.length})
-                  </h3>
-                  <ul className="space-y-1.5 max-h-60 overflow-y-auto">
-                    {impact.affected_files.map((f) => (
+                <div className="rounded-2xl bg-[var(--glass-3)] backdrop-blur-2xl border border-dv-border overflow-hidden shadow-[var(--inset)]">
+                  <div className="px-5 py-3.5 border-b border-dv-border-subtle">
+                    <h3 className="text-[13px] font-semibold text-dv-text/90">
+                      All Affected Files
+                      <span className="ml-2 text-[11px] font-normal text-dv-text/20">{impact.affected_files.length}</span>
+                    </h3>
+                  </div>
+                  <ul className="max-h-60 overflow-y-auto">
+                    {impact.affected_files.map((f, i) => (
                       <li
                         key={f}
-                        className="text-xs text-dv-text-muted font-mono truncate py-1 px-2 rounded hover:bg-dv-surface/50"
+                        className={`text-[12px] text-dv-text/35 font-mono truncate py-2.5 px-5 hover:bg-[var(--glass-3)] transition-colors ${
+                          i < impact.affected_files.length - 1 ? 'border-b border-dv-border-subtle' : ''
+                        }`}
                       >
                         {f}
                       </li>
@@ -588,41 +721,76 @@ export function ImpactPanel({ repositoryId, filePath }: ImpactPanelProps) {
                   </ul>
                 </div>
               )}
-            </div>
+            </motion.div>
 
-            {/* ── Graph (at bottom) ── */}
-            <div className="rounded-xl bg-dv-elevated border border-dv-border/20 p-5">
-              <h3 className="text-sm font-semibold text-dv-text mb-3 flex items-center gap-2">
-                <GitBranch className="w-4 h-4 text-dv-accent" />
-                Impact Graph
-              </h3>
+            {/* -- Graph -- */}
+            <motion.div
+              className="rounded-2xl bg-[var(--glass-3)] backdrop-blur-2xl border border-dv-border overflow-hidden shadow-[var(--inset)]"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.25, ease }}
+            >
+              <div className="px-5 py-3.5 border-b border-dv-border-subtle flex items-center gap-2">
+                <GitBranch className="w-4 h-4 text-dv-orange" />
+                <h3 className="text-[13px] font-semibold text-dv-text/90">Impact Graph</h3>
+              </div>
               {graphStatus === 'rendering' && (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-5 h-5 text-dv-accent animate-spin mr-2" />
-                  <span className="text-sm text-dv-text-muted">Rendering graph…</span>
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="w-5 h-5 text-dv-orange animate-spin mr-2.5" />
+                  <span className="text-[13px] text-dv-text/25">Rendering graph�</span>
                 </div>
               )}
               <div
                 ref={containerRef}
-                className="w-full min-h-[420px] overflow-auto [&_svg]:w-full [&_svg]:min-h-[400px] [&_svg]:h-auto"
+                className="w-full min-h-[420px] overflow-auto p-4 [&_svg]:w-full [&_svg]:min-h-[400px] [&_svg]:h-auto"
               />
-            </div>
+            </motion.div>
           </div>
         )}
 
-        {/* Empty state */}
+        {/* -- Empty state -- */}
         {!isLoading && !error
           && ((mode === 'file' && !impact) || (mode === 'codebase' && !codebaseImpact)) && (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <Zap className="w-12 h-12 text-dv-text-muted/40 mb-3" />
-            <p className="text-sm text-dv-text-muted">
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-dv-orange/10 flex items-center justify-center mb-5">
+              <Zap className="w-8 h-8 text-dv-orange/40" />
+            </div>
+            <p className="text-[15px] font-semibold text-dv-text/50 mb-2">
+              {mode === 'codebase' ? 'Codebase Analysis' : 'File Analysis'}
+            </p>
+            <p className="text-[13px] text-dv-text/25 max-w-sm">
               {mode === 'codebase'
-                ? 'Analyze the entire codebase for impact hotspots'
-                : 'Select a file to analyze its change impact'}
+                ? 'Analyze the entire codebase for impact hotspots and dependency risks.'
+                : 'Select a file to analyze its change impact and dependency chain.'}
             </p>
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+/* -- Stat Card -- */
+function StatCard({
+  label,
+  value,
+  icon,
+  color,
+}: {
+  label: string
+  value: number | string
+  icon: React.ReactNode
+  color: string
+}) {
+  return (
+    <div className="rounded-2xl bg-[var(--glass-3)] backdrop-blur-2xl border border-dv-border p-4 shadow-[var(--inset)]">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[11px] font-semibold text-dv-text/25 uppercase tracking-[0.06em]">{label}</span>
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${color}15` }}>
+          <span style={{ color }}>{icon}</span>
+        </div>
+      </div>
+      <p className="text-[24px] font-bold tracking-[-0.03em]" style={{ color }}>{value}</p>
     </div>
   )
 }

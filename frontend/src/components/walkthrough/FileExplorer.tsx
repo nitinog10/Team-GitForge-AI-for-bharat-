@@ -74,23 +74,23 @@ export function FileExplorer({ files, selectedFile, onSelectFile }: FileExplorer
   return (
     <div className="h-full flex flex-col">
       {/* Search */}
-      <div className="p-4 border-b border-dv-border">
+      <div className="p-3 border-b border-dv-border-subtle">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dv-text-muted" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-dv-text-muted" />
           <input
             type="text"
             placeholder="Search files..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-dv-bg border border-dv-border rounded-lg py-2 pl-9 pr-3
-                     text-sm text-dv-text placeholder:text-dv-text-muted
-                     focus:outline-none focus:ring-2 focus:ring-dv-accent/50 focus:border-dv-accent"
+            className="w-full bg-[var(--glass-4)] border border-dv-border rounded-[10px] py-2 pl-9 pr-3
+                     ios-caption1 text-dv-text placeholder:text-dv-text-muted
+                     focus:outline-none focus:ring-1 focus:ring-dv-accent/30 focus:border-dv-accent/40"
           />
         </div>
       </div>
 
       {/* File tree */}
-      <div className="flex-1 overflow-auto p-2">
+      <div className="flex-1 overflow-auto p-1.5">
         {filteredFiles.map((node) => (
           <FileTreeNode
             key={node.id}
@@ -126,7 +126,7 @@ function FileTreeNode({
 }: FileTreeNodeProps) {
   const isExpanded = expandedFolders.has(node.id)
   const isSelected = selectedFile === node.path
-  const paddingLeft = depth * 16 + 8
+  const paddingLeft = depth * 14 + 8
 
   if (node.isDirectory) {
     return (
@@ -134,8 +134,8 @@ function FileTreeNode({
         <button
           onClick={() => onToggleFolder(node.id)}
           className={clsx(
-            'w-full flex items-center gap-2 py-1.5 px-2 rounded-lg transition-colors text-left',
-            'hover:bg-dv-elevated'
+            'w-full flex items-center gap-2 py-1.5 px-2 rounded-[8px] transition-all text-left active:scale-[0.98]',
+            'hover:bg-[var(--glass-4)]'
           )}
           style={{ paddingLeft }}
         >
@@ -144,14 +144,14 @@ function FileTreeNode({
             animate={{ rotate: isExpanded ? 90 : 0 }}
             transition={{ duration: 0.1 }}
           >
-            <ChevronRight className="w-4 h-4 text-dv-text-muted" />
+            <ChevronRight className="w-3.5 h-3.5 text-dv-text-muted" />
           </motion.div>
           {isExpanded ? (
-            <FolderOpen className="w-4 h-4 text-dv-accent" />
+            <FolderOpen className="w-3.5 h-3.5 text-dv-accent" />
           ) : (
-            <Folder className="w-4 h-4 text-dv-accent" />
+            <Folder className="w-3.5 h-3.5 text-dv-accent" />
           )}
-          <span className="text-sm">{node.name}</span>
+          <span className="ios-caption1">{node.name}</span>
         </button>
 
         <AnimatePresence initial={false}>
@@ -184,19 +184,19 @@ function FileTreeNode({
     <button
       onClick={() => onSelectFile(node.path)}
       className={clsx(
-        'w-full flex items-center gap-2 py-1.5 px-2 rounded-lg transition-colors text-left',
-        isSelected ? 'bg-dv-accent/10 text-dv-accent' : 'hover:bg-dv-elevated'
+        'w-full flex items-center gap-2 py-1.5 px-2 rounded-[8px] transition-all text-left active:scale-[0.98]',
+        isSelected ? 'bg-dv-accent/10 text-dv-accent' : 'hover:bg-[var(--glass-4)]'
       )}
-      style={{ paddingLeft: paddingLeft + 20 }}
+      style={{ paddingLeft: paddingLeft + 18 }}
     >
-      <span className="text-sm">
+      <span className="ios-caption1">
         {node.language && languageIcons[node.language] ? (
           languageIcons[node.language]
         ) : (
-          <FileCode className="w-4 h-4 text-dv-text-muted" />
+          <FileCode className="w-3.5 h-3.5 text-dv-text-muted" />
         )}
       </span>
-      <span className="text-sm truncate">{node.name}</span>
+      <span className="ios-caption1 truncate">{node.name}</span>
     </button>
   )
 }

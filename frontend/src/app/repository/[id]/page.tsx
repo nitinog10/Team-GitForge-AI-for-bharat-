@@ -154,27 +154,27 @@ export default function RepositoryPage({ params }: { params: { id: string } }) {
       <Sidebar />
 
       <main className="flex-1 overflow-y-auto">
-        {/* Top bar */}
-        <div className="sticky top-0 z-10 bg-dv-bg/80 backdrop-blur-lg border-b border-dv-border/30">
-          <div className="flex items-center gap-3 px-8 h-16">
-            <Link href="/repositories" className="p-1.5 rounded-lg hover:bg-dv-elevated transition-colors">
+        {/* iOS frosted top bar */}
+        <div className="sticky top-0 z-10 glass-bar">
+          <div className="flex items-center gap-3 px-8 h-14">
+            <Link href="/repositories" className="p-1.5 rounded-[10px] hover:bg-dv-elevated/60 transition-colors">
               <ArrowLeft className="w-4 h-4 text-dv-text-muted" />
             </Link>
-            <div className="flex items-center gap-2 text-sm text-dv-text-muted">
+            <div className="flex items-center gap-2 text-ios-subhead text-dv-text-muted">
               <span>Repositories</span>
               <ChevronRight className="w-3.5 h-3.5" />
-              <span className="text-dv-text font-medium">{repo.name}</span>
+              <span className="text-dv-text font-semibold">{repo.name}</span>
             </div>
             <div className="flex-1" />
             <button
               onClick={handleReindex}
               disabled={isReindexing}
-              className="btn-secondary flex items-center gap-2"
+              className="btn-secondary flex items-center gap-2 text-[13px]"
             >
               {isReindexing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
               Reindex
             </button>
-            <Link href={`/repository/${params.id}/walkthrough`} className="btn-primary flex items-center gap-2">
+            <Link href={`/repository/${params.id}/walkthrough`} className="btn-primary flex items-center gap-2 text-[13px]">
               <Play className="w-3.5 h-3.5" />
               Walkthrough
             </Link>
@@ -184,7 +184,7 @@ export default function RepositoryPage({ params }: { params: { id: string } }) {
         <div className="px-8 py-6 max-w-6xl">
           {/* Repo header */}
           <div className="flex items-start gap-4 mb-8">
-            <div className="w-12 h-12 rounded-2xl bg-dv-accent/10 flex items-center justify-center flex-shrink-0">
+            <div className="w-12 h-12 rounded-ios bg-dv-accent/10 flex items-center justify-center flex-shrink-0">
               <FolderGit2 className="w-6 h-6 text-dv-accent" />
             </div>
             <div className="flex-1">
@@ -196,43 +196,43 @@ export default function RepositoryPage({ params }: { params: { id: string } }) {
                   <span className="badge-warning">Pending</span>
                 )}
               </div>
-              <p className="text-sm text-dv-text-secondary">{repo.full_name}</p>
+              <p className="text-ios-subhead text-dv-text-secondary">{repo.full_name}</p>
               {repo.description && (
-                <p className="text-sm text-dv-text-muted mt-2 max-w-2xl">{repo.description}</p>
+                <p className="text-ios-subhead text-dv-text-muted mt-2 max-w-2xl">{repo.description}</p>
               )}
             </div>
           </div>
 
           {/* Info cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
             <div className="card flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-dv-accent/10 flex items-center justify-center text-dv-accent">
+              <div className="w-9 h-9 rounded-[10px] bg-dv-accent/10 flex items-center justify-center text-dv-accent">
                 <FileCode className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-xl font-bold tabular-nums">{flatFiles.length}</p>
-                <p className="text-xs text-dv-text-muted">Files</p>
+                <p className="text-[20px] font-bold tabular-nums">{flatFiles.length}</p>
+                <p className="text-ios-caption1 text-dv-text-muted">Files</p>
               </div>
             </div>
             {repo.language && (
               <div className="card flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-dv-purple/10 flex items-center justify-center text-dv-purple">
+                <div className="w-9 h-9 rounded-[10px] bg-dv-purple/10 flex items-center justify-center text-dv-purple">
                   <GitBranch className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold">{repo.language}</p>
-                  <p className="text-xs text-dv-text-muted">Language</p>
+                  <p className="text-ios-subhead font-semibold">{repo.language}</p>
+                  <p className="text-ios-caption1 text-dv-text-muted">Language</p>
                 </div>
               </div>
             )}
             {repo.indexed_at && (
               <div className="card flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-dv-success/10 flex items-center justify-center text-dv-success">
+                <div className="w-9 h-9 rounded-[10px] bg-dv-success/10 flex items-center justify-center text-dv-success">
                   <Clock className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold">{formatRelativeTime(repo.indexed_at)}</p>
-                  <p className="text-xs text-dv-text-muted">Last indexed</p>
+                  <p className="text-ios-subhead font-semibold">{formatRelativeTime(repo.indexed_at)}</p>
+                  <p className="text-ios-caption1 text-dv-text-muted">Last indexed</p>
                 </div>
               </div>
             )}
@@ -241,7 +241,7 @@ export default function RepositoryPage({ params }: { params: { id: string } }) {
                 href={`https://github.com/${repo.full_name}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm text-dv-accent hover:text-dv-accent-hover transition-colors"
+                className="flex items-center gap-2 text-ios-subhead text-dv-accent hover:brightness-110 transition-all"
               >
                 <ExternalLink className="w-4 h-4" />
                 View on GitHub
@@ -249,24 +249,18 @@ export default function RepositoryPage({ params }: { params: { id: string } }) {
             </div>
           </div>
 
-          {/* Tab switcher */}
-          <div className="flex items-center gap-1 bg-dv-surface rounded-xl p-1 mb-6 w-fit">
+          {/* iOS segmented tab switcher */}
+          <div className="ios-segmented w-fit mb-6">
             <button
               onClick={() => setActiveTab('files')}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'files'
-                  ? 'bg-dv-accent text-white'
-                  : 'text-dv-text-muted hover:text-dv-text hover:bg-dv-elevated/60'
-                }`}
+              className={`ios-segmented-item flex items-center gap-1.5 ${activeTab === 'files' ? 'active' : ''}`}
             >
               <FileCode className="w-4 h-4" />
               Files
             </button>
             <button
               onClick={() => setActiveTab('documentation')}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'documentation'
-                  ? 'bg-dv-accent text-white'
-                  : 'text-dv-text-muted hover:text-dv-text hover:bg-dv-elevated/60'
-                }`}
+              className={`ios-segmented-item flex items-center gap-1.5 ${activeTab === 'documentation' ? 'active' : ''}`}
             >
               <BookOpen className="w-4 h-4" />
               Documentation
@@ -279,19 +273,19 @@ export default function RepositoryPage({ params }: { params: { id: string } }) {
             <div className="grid lg:grid-cols-3 gap-6">
               {/* File list */}
               <div className="lg:col-span-2">
-                <h3 className="text-sm font-medium text-dv-text-secondary uppercase tracking-wider mb-4">
+                <h3 className="text-ios-caption1 font-semibold text-dv-text-secondary uppercase tracking-wider mb-4">
                   Files
                 </h3>
 
                 {isFilesLoading ? (
                   <div className="card flex items-center justify-center py-12">
                     <Loader2 className="w-5 h-5 text-dv-accent animate-spin mr-3" />
-                    <span className="text-sm text-dv-text-muted">Loading file tree…</span>
+                    <span className="text-ios-subhead text-dv-text-muted">Loading file tree…</span>
                   </div>
                 ) : flatFiles.length === 0 ? (
                   <div className="card text-center py-12">
-                    <FileCode className="w-8 h-8 text-dv-text-muted mx-auto mb-3" />
-                    <p className="text-sm text-dv-text-muted mb-4">
+                    <FileCode className="w-7 h-7 text-dv-text-muted mx-auto mb-3" />
+                    <p className="text-ios-subhead text-dv-text-muted mb-4">
                       {repo.is_indexed ? 'No files found' : 'Index this repository to browse files'}
                     </p>
                     {!repo.is_indexed && (
@@ -301,26 +295,26 @@ export default function RepositoryPage({ params }: { params: { id: string } }) {
                     )}
                   </div>
                 ) : (
-                  <div className="card p-0 divide-y divide-dv-border/30 overflow-hidden">
+                  <div className="ios-group overflow-hidden">
                     {flatFiles.map((file, i) => (
                       <motion.div
                         key={file.path}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: i * 0.02 }}
-                        className="flex items-center gap-3 px-4 py-3 hover:bg-dv-elevated/40 transition-colors group"
+                        className="ios-group-item flex items-center gap-3 group"
                       >
                         <File className="w-4 h-4 text-dv-text-muted flex-shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{file.name}</p>
-                          <p className="text-xs text-dv-text-muted truncate">{file.path}</p>
+                          <p className="text-ios-subhead font-medium truncate">{file.name}</p>
+                          <p className="text-ios-caption1 text-dv-text-muted truncate">{file.path}</p>
                         </div>
                         {file.language && (
-                          <span className="text-xs text-dv-text-muted">{file.language}</span>
+                          <span className="text-ios-caption1 text-dv-text-muted">{file.language}</span>
                         )}
                         <Link
                           href={`/repository/${params.id}/walkthrough?file=${encodeURIComponent(file.path)}`}
-                          className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium bg-dv-accent/10 text-dv-accent hover:bg-dv-accent/20 transition-colors opacity-0 group-hover:opacity-100"
+                          className="flex items-center gap-1.5 px-3 py-1 rounded-[10px] text-ios-caption1 font-semibold bg-dv-accent/10 text-dv-accent hover:bg-dv-accent/20 transition-colors opacity-0 group-hover:opacity-100"
                         >
                           <Play className="w-3 h-3" /> Walkthrough
                         </Link>
@@ -331,33 +325,33 @@ export default function RepositoryPage({ params }: { params: { id: string } }) {
               </div>
 
               {/* Sidebar */}
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {/* Quick actions */}
                 <div className="card">
-                  <h3 className="text-sm font-medium mb-3">Quick Actions</h3>
-                  <div className="space-y-2">
+                  <h3 className="text-ios-subhead font-semibold mb-3">Quick Actions</h3>
+                  <div className="space-y-1.5">
                     <Link
                       href={`/repository/${params.id}/walkthrough`}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-dv-elevated/50 hover:bg-dv-elevated transition-colors group"
+                      className="flex items-center gap-3 p-3 rounded-[12px] bg-dv-elevated/40 hover:bg-dv-elevated/70 transition-colors group"
                     >
                       <Play className="w-4 h-4 text-dv-accent" />
-                      <span className="text-sm">Start Walkthrough</span>
+                      <span className="text-ios-subhead">Start Walkthrough</span>
                       <ChevronRight className="w-3.5 h-3.5 text-dv-text-muted ml-auto group-hover:translate-x-0.5 transition-transform" />
                     </Link>
                     <button
                       onClick={handleReindex}
                       disabled={isReindexing}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-dv-elevated/50 hover:bg-dv-elevated transition-colors w-full text-left"
+                      className="flex items-center gap-3 p-3 rounded-[12px] bg-dv-elevated/40 hover:bg-dv-elevated/70 transition-colors w-full text-left"
                     >
                       {isReindexing ? <Loader2 className="w-4 h-4 animate-spin text-dv-text-muted" /> : <RefreshCw className="w-4 h-4 text-dv-text-muted" />}
-                      <span className="text-sm">Re-index Repository</span>
+                      <span className="text-ios-subhead">Re-index Repository</span>
                     </button>
                     <button
                       onClick={() => setActiveTab('documentation')}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-dv-elevated/50 hover:bg-dv-elevated transition-colors w-full text-left group"
+                      className="flex items-center gap-3 p-3 rounded-[12px] bg-dv-elevated/40 hover:bg-dv-elevated/70 transition-colors w-full text-left group"
                     >
                       <BookOpen className="w-4 h-4 text-dv-purple" />
-                      <span className="text-sm">View Documentation</span>
+                      <span className="text-ios-subhead">View Documentation</span>
                       <ChevronRight className="w-3.5 h-3.5 text-dv-text-muted ml-auto group-hover:translate-x-0.5 transition-transform" />
                     </button>
                   </div>
@@ -365,16 +359,16 @@ export default function RepositoryPage({ params }: { params: { id: string } }) {
 
                 {/* Danger zone */}
                 <div className="card border-dv-error/20">
-                  <h3 className="text-sm font-medium text-dv-error mb-3 flex items-center gap-2">
+                  <h3 className="text-ios-subhead font-semibold text-dv-error mb-3 flex items-center gap-2">
                     <Trash2 className="w-3.5 h-3.5" /> Danger Zone
                   </h3>
-                  <p className="text-xs text-dv-text-muted mb-3">
+                  <p className="text-ios-caption1 text-dv-text-muted mb-3">
                     Disconnect this repository and delete all walkthroughs.
                   </p>
                   <button
                     onClick={handleDelete}
                     disabled={isDeleting}
-                    className="w-full py-2 rounded-lg border border-dv-error/40 text-dv-error text-xs font-medium hover:bg-dv-error/10 transition-colors disabled:opacity-50"
+                    className="w-full py-2 rounded-[10px] border border-dv-error/30 text-dv-error text-ios-caption1 font-semibold hover:bg-dv-error/10 active:scale-[0.98] transition-all disabled:opacity-50"
                   >
                     {isDeleting ? 'Disconnecting…' : 'Disconnect Repository'}
                   </button>

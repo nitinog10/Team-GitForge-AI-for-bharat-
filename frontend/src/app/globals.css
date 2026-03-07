@@ -3,32 +3,185 @@
 @tailwind utilities;
 
 @layer base {
+  /* ═══════════════════════════════════════════
+     Theme Custom Properties — Dark (default)
+     ═══════════════════════════════════════════ */
+  :root {
+    /* Core palette — RGB channels (Tailwind opacity support) */
+    --dv-bg: 0 0 0;
+    --dv-bg-secondary: 12 12 14;
+    --dv-surface: 28 28 30;
+    --dv-elevated: 44 44 46;
+    --dv-elevated-2: 58 58 60;
+    --dv-text: 245 245 247;
+    --dv-text-secondary: 152 152 157;
+    --dv-text-muted: 99 99 102;
+    --dv-accent: 10 132 255;
+    --dv-accent-hover: 64 156 255;
+    --dv-success: 48 209 88;
+    --dv-warning: 255 214 10;
+    --dv-error: 255 69 58;
+    --dv-purple: 191 90 242;
+    --dv-pink: 255 55 95;
+    --dv-cyan: 100 210 255;
+    --dv-orange: 255 159 10;
+    --dv-teal: 106 196 220;
+    --dv-indigo: 94 92 230;
+    --dv-mint: 99 230 226;
+
+    /* Semantic tokens (full values) */
+    --dv-border: rgba(255,255,255,0.08);
+    --dv-border-subtle: rgba(255,255,255,0.04);
+    --dv-accent-subtle: rgba(10,132,255,0.12);
+
+    /* Glass surface scale */
+    --glass-2: rgba(255,255,255,0.02);
+    --glass-3: rgba(255,255,255,0.03);
+    --glass-4: rgba(255,255,255,0.04);
+    --glass-5: rgba(255,255,255,0.05);
+    --glass-6: rgba(255,255,255,0.06);
+    --glass-8: rgba(255,255,255,0.08);
+    --glass-10: rgba(255,255,255,0.10);
+    --glass-12: rgba(255,255,255,0.12);
+    --glass-16: rgba(255,255,255,0.16);
+
+    /* Frosted UI */
+    --bar-bg: rgba(0,0,0,0.6);
+    --inset: inset 0 1px 0 rgba(255,255,255,0.04);
+    --card-shadow: none;
+    --scroll-thumb: rgba(255,255,255,0.10);
+    --scroll-thumb-hover: rgba(255,255,255,0.20);
+    --selection-bg: rgba(10,132,255,0.30);
+    --ambient-opacity: 1;
+    --backdrop-tint: rgba(28,28,30,0.85);
+    --btn-solid-bg: #fff;
+    --btn-solid-text: #000;
+    --btn-solid-hover: rgba(255,255,255,0.90);
+    --btn-solid-shadow: 0 2px 12px rgba(255,255,255,0.08);
+
+    /* Code preview */
+    --code-bg: rgba(0,0,0,0.40);
+    --code-plain: #d1d1d6;
+    --code-kw: #ff7ab2;
+    --code-str: #30d158;
+    --code-fn: #0a84ff;
+    --code-cls: #64d2ff;
+    --code-op: #bf5af2;
+
+    /* Section divider band */
+    --section-band: linear-gradient(to bottom, rgb(0 0 0), rgb(10 10 10), rgb(0 0 0));
+  }
+
+  /* ═══════════════════════════════════════════
+     Light Theme — Apple-Inspired
+     ═══════════════════════════════════════════ */
+  html.light {
+    --dv-bg: 242 242 247;
+    --dv-bg-secondary: 255 255 255;
+    --dv-surface: 255 255 255;
+    --dv-elevated: 255 255 255;
+    --dv-elevated-2: 229 229 234;
+    --dv-text: 29 29 31;
+    --dv-text-secondary: 134 134 139;
+    --dv-text-muted: 174 174 178;
+    --dv-accent: 0 122 255;
+    --dv-accent-hover: 0 113 227;
+    --dv-success: 52 199 89;
+    --dv-warning: 255 204 0;
+    --dv-error: 255 59 48;
+    --dv-purple: 175 82 222;
+    --dv-pink: 255 45 85;
+    --dv-cyan: 90 200 250;
+    --dv-orange: 255 149 0;
+    --dv-teal: 90 200 250;
+    --dv-indigo: 88 86 214;
+    --dv-mint: 0 199 190;
+
+    --dv-border: rgba(0,0,0,0.08);
+    --dv-border-subtle: rgba(0,0,0,0.04);
+    --dv-accent-subtle: rgba(0,122,255,0.10);
+
+    /* Glass surfaces on #f2f2f7 */
+    --glass-2: rgba(255,255,255,0.55);
+    --glass-3: rgba(255,255,255,0.82);
+    --glass-4: rgba(120,120,128,0.06);
+    --glass-5: rgba(120,120,128,0.08);
+    --glass-6: rgba(120,120,128,0.10);
+    --glass-8: rgba(120,120,128,0.12);
+    --glass-10: rgba(120,120,128,0.14);
+    --glass-12: rgba(120,120,128,0.16);
+    --glass-16: rgba(120,120,128,0.18);
+
+    --bar-bg: rgba(242,242,247,0.82);
+    --inset: 0 0.5px 0 rgba(0,0,0,0.04);
+    --card-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 0 1px rgba(0,0,0,0.04);
+    --scroll-thumb: rgba(0,0,0,0.12);
+    --scroll-thumb-hover: rgba(0,0,0,0.22);
+    --selection-bg: rgba(0,122,255,0.22);
+    --ambient-opacity: 0.30;
+    --backdrop-tint: rgba(255,255,255,0.88);
+    --btn-solid-bg: rgb(29 29 31);
+    --btn-solid-text: #fff;
+    --btn-solid-hover: rgb(29 29 31 / 0.88);
+    --btn-solid-shadow: 0 2px 8px rgba(0,0,0,0.10);
+
+    --code-bg: rgba(245,245,247,0.7);
+    --code-plain: #3a3a3c;
+    --code-kw: #ad3da4;
+    --code-str: #272ad8;
+    --code-fn: #0b4f79;
+    --code-cls: #3900a0;
+    --code-op: #612e9e;
+
+    --section-band: linear-gradient(to bottom, rgb(242 242 247), rgb(232 232 237), rgb(242 242 247));
+  }
+
   * {
-    @apply border-dv-border;
+    border-color: var(--dv-border);
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
-    @apply bg-dv-bg text-dv-text;
+    background-color: rgb(var(--dv-bg));
+    color: rgb(var(--dv-text));
   }
 
-  /* Refined scrollbar */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { @apply bg-transparent; }
-  ::-webkit-scrollbar-thumb { @apply bg-dv-elevated rounded-full hover:bg-dv-border; }
+  /* iOS-style thin scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--scroll-thumb-hover); }
 
   ::selection {
-    background: rgba(99, 102, 241, 0.3);
+    background: var(--selection-bg);
   }
 }
 
 @layer components {
-  /* ── Glass panels ── */
+  /* ── iOS Glass Material ── */
   .glass-panel {
-    @apply bg-dv-surface/70 backdrop-blur-xl border border-dv-border/40 rounded-2xl;
+    background: rgb(var(--dv-surface) / 0.6);
+    backdrop-filter: blur(40px);
+    border: 1px solid var(--dv-border);
+    @apply rounded-ios-lg;
+    box-shadow: var(--card-shadow);
   }
 
   .glass-panel-solid {
-    @apply bg-dv-surface border border-dv-border/50 rounded-2xl;
+    background: rgb(var(--dv-surface));
+    border: 1px solid var(--dv-border);
+    @apply rounded-ios-lg;
+    box-shadow: var(--card-shadow);
+  }
+
+  .glass-bar {
+    background: rgb(var(--dv-bg) / 0.7);
+    backdrop-filter: blur(40px);
+    border-bottom: 1px solid var(--dv-border-subtle);
   }
 
   /* ── Gradient text ── */
@@ -36,48 +189,79 @@
     @apply bg-clip-text text-transparent bg-gradient-to-r from-dv-accent via-dv-purple to-dv-pink;
   }
 
-  /* ── Buttons ── */
+  /* ── iOS Buttons ── */
   .btn-primary {
-    @apply px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-200
-           bg-dv-accent text-white
-           hover:bg-dv-accent-hover hover:shadow-glow-sm
-           active:scale-[0.97]
-           disabled:opacity-50 disabled:pointer-events-none;
+    @apply px-5 py-2.5 rounded-[12px] font-semibold text-sm transition-all duration-200
+           bg-dv-accent text-white shadow-ios-sm
+           hover:brightness-110 hover:shadow-ios-glow
+           active:scale-[0.97] active:brightness-90
+           disabled:opacity-40 disabled:pointer-events-none;
   }
 
   .btn-secondary {
-    @apply px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-200
-           bg-dv-elevated border border-dv-border text-dv-text
-           hover:bg-dv-surface hover:border-dv-text-muted
+    @apply px-5 py-2.5 rounded-[12px] font-semibold text-sm transition-all duration-200
+           bg-dv-elevated/80 text-dv-text
            active:scale-[0.97]
-           disabled:opacity-50 disabled:pointer-events-none;
+           disabled:opacity-40 disabled:pointer-events-none;
+    border: 1px solid var(--dv-border);
+  }
+  .btn-secondary:hover {
+    background: rgb(var(--dv-elevated));
+    border-color: var(--dv-border);
   }
 
   .btn-ghost {
-    @apply px-4 py-2 rounded-lg font-medium text-sm transition-all duration-150
-           text-dv-text-secondary hover:text-dv-text hover:bg-dv-elevated;
+    @apply px-4 py-2 rounded-[10px] font-medium text-sm transition-all duration-150
+           text-dv-text-secondary hover:text-dv-text;
+  }
+  .btn-ghost:hover {
+    background: var(--glass-6);
   }
 
-  /* ── Input fields ── */
+  /* ── iOS Input ── */
   .input-field {
-    @apply w-full bg-dv-bg border border-dv-border rounded-xl px-4 py-2.5 text-sm
+    @apply w-full bg-dv-elevated/60 rounded-[12px] px-4 py-2.5 text-sm
            text-dv-text placeholder:text-dv-text-muted
-           focus:outline-none focus:ring-2 focus:ring-dv-accent/40 focus:border-dv-accent
-           transition-all duration-150;
+           focus:outline-none focus:ring-2 focus:ring-dv-accent/30 focus:border-dv-accent/40
+           transition-all duration-200;
+    border: 1px solid var(--dv-border);
   }
 
-  /* ── Cards ── */
+  /* ── iOS Cards ── */
   .card {
-    @apply bg-dv-surface border border-dv-border/50 rounded-2xl p-5 transition-all duration-200;
+    @apply bg-dv-surface/80 rounded-ios-lg p-5 transition-all duration-200;
+    border: 1px solid var(--dv-border);
+    box-shadow: var(--card-shadow);
   }
 
   .card-hover {
-    @apply card hover:border-dv-border hover:shadow-card cursor-pointer;
+    @apply card hover:bg-dv-surface cursor-pointer;
+  }
+
+  /* ── iOS Grouped List ── */
+  .ios-group {
+    @apply bg-dv-surface/80 rounded-ios-lg overflow-hidden;
+    border: 1px solid var(--dv-border);
+    box-shadow: var(--card-shadow);
+  }
+
+  .ios-group-item {
+    @apply px-4 py-3.5 flex items-center gap-3 transition-colors;
+  }
+  .ios-group-item:hover {
+    background: var(--glass-3);
+  }
+  .ios-group-item:active {
+    background: var(--glass-6);
+  }
+
+  .ios-group-item + .ios-group-item {
+    border-top: 1px solid var(--dv-border-subtle);
   }
 
   /* ── Code styling ── */
   .code-line {
-    @apply font-mono text-sm leading-6;
+    @apply font-mono text-sm leading-7;
   }
 
   .code-line.highlighted {
@@ -88,13 +272,13 @@
     @apply w-12 inline-block text-dv-text-muted text-right pr-4 select-none text-xs;
   }
 
-  /* ── Badge ── */
+  /* ── iOS Badges / Pills ── */
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
   }
 
   .badge-accent {
-    @apply badge bg-dv-accent/15 text-dv-accent-hover;
+    @apply badge bg-dv-accent/15 text-dv-accent;
   }
 
   .badge-success {
@@ -108,6 +292,22 @@
   .badge-error {
     @apply badge bg-dv-error/15 text-dv-error;
   }
+
+  /* ── iOS Segmented Control ── */
+  .ios-segmented {
+    @apply flex items-center gap-0.5 p-[3px] bg-dv-elevated/60 rounded-[10px];
+    border: 1px solid var(--dv-border-subtle);
+  }
+
+  .ios-segmented-item {
+    @apply px-3.5 py-[6px] rounded-[8px] text-xs font-semibold transition-all duration-200
+           text-dv-text-muted hover:text-dv-text;
+  }
+
+  .ios-segmented-item-active {
+    @apply ios-segmented-item bg-dv-surface text-dv-text shadow-ios-sm;
+    border: 1px solid var(--dv-border);
+  }
 }
 
 @layer utilities {
@@ -115,19 +315,32 @@
   .animation-delay-300 { animation-delay: 300ms; }
   .animation-delay-500 { animation-delay: 500ms; }
 
-  /* Syntax tokens */
+  /* Syntax tokens — iOS colors */
   .token.comment    { @apply text-dv-text-muted; }
-  .token.keyword    { @apply text-dv-purple; }
+  .token.keyword    { @apply text-dv-pink; }
   .token.string     { @apply text-dv-success; }
   .token.function   { @apply text-dv-accent; }
-  .token.number     { @apply text-dv-warning; }
-  .token.operator   { @apply text-dv-pink; }
+  .token.number     { @apply text-dv-orange; }
+  .token.operator   { @apply text-dv-purple; }
   .token.class-name { @apply text-dv-cyan; }
+
+  /* iOS mesh background */
+  .ios-mesh {
+    background-image:
+      radial-gradient(at 20% 30%, rgb(var(--dv-accent) / 0.06) 0px, transparent 50%),
+      radial-gradient(at 80% 70%, rgb(var(--dv-purple) / 0.04) 0px, transparent 50%),
+      radial-gradient(at 50% 100%, rgb(var(--dv-success) / 0.03) 0px, transparent 40%);
+  }
 
   /* Dot grid pattern */
   .dot-grid {
-    background-image: radial-gradient(circle, rgba(99,102,241,0.07) 1px, transparent 1px);
-    background-size: 24px 24px;
+    background-image: radial-gradient(circle, rgb(var(--dv-accent) / 0.05) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  /* Ambient glow container */
+  .ambient-glows {
+    opacity: var(--ambient-opacity);
   }
 }
 

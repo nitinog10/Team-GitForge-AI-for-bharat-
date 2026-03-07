@@ -12,6 +12,7 @@ import {
   LogOut,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import { clsx } from 'clsx'
 import { useUserStore } from '@/lib/store'
 
@@ -38,26 +39,26 @@ export function Sidebar() {
 
   if (!mounted) {
     return (
-      <aside className="h-screen w-[260px] bg-dv-surface border-r border-dv-border/50 flex flex-col" />
+      <aside className="h-screen w-[260px] bg-dv-surface/60 backdrop-blur-ios border-r border-dv-border flex flex-col" />
     )
   }
 
   return (
     <aside
       className={clsx(
-        'h-screen bg-dv-surface/80 backdrop-blur-xl border-r border-dv-border/40 flex flex-col transition-all duration-300 relative group/sidebar',
+        'h-screen bg-dv-surface/60 backdrop-blur-ios border-r border-dv-border flex flex-col transition-all duration-300 relative group/sidebar',
         isCollapsed ? 'w-[72px]' : 'w-[260px]'
       )}
     >
       {/* Logo */}
-      <div className="h-16 flex items-center px-5 border-b border-dv-border/30">
+      <div className="h-14 flex items-center px-5 border-b border-dv-border-subtle">
         <Link href="/" className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-lg bg-dv-accent flex items-center justify-center flex-shrink-0 shadow-glow-sm">
-            <Code2 className="w-5 h-5 text-white" />
+          <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-dv-accent to-dv-indigo flex items-center justify-center flex-shrink-0 shadow-ios-sm">
+            <Code2 className="w-4 h-4 text-white" />
           </div>
           <span
             className={clsx(
-              'text-lg font-bold text-dv-text tracking-tight transition-all duration-300',
+              'ios-body font-bold text-dv-text tracking-tight transition-all duration-300',
               isCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'
             )}
           >
@@ -67,7 +68,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
@@ -77,19 +78,28 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={clsx(
-                'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 group/item relative',
+                'flex items-center gap-3 px-3 py-2.5 rounded-[10px] transition-all duration-150 group/item relative active:scale-[0.98]',
                 isActive
                   ? 'bg-dv-accent/10 text-dv-accent'
-                  : 'text-dv-text-muted hover:text-dv-text hover:bg-dv-elevated/60'
+                  : 'text-dv-text-muted hover:text-dv-text hover:bg-[var(--glass-4)]'
               )}
             >
               {isActive && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-dv-accent" />
+                <motion.div
+                  layoutId="sidebar-active"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 rounded-r-full bg-dv-accent"
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                />
               )}
-              <Icon className="w-[18px] h-[18px] flex-shrink-0" />
+              <div className={clsx(
+                'w-7 h-7 rounded-[8px] flex items-center justify-center flex-shrink-0 transition-colors',
+                isActive ? 'bg-dv-accent/15' : 'bg-[var(--glass-6)]'
+              )}>
+                <Icon className="w-[15px] h-[15px]" />
+              </div>
               <span
                 className={clsx(
-                  'text-sm font-medium transition-all duration-300',
+                  'ios-subhead font-medium transition-all duration-300',
                   isCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'
                 )}
               >
@@ -101,10 +111,10 @@ export function Sidebar() {
       </nav>
 
       {/* User section */}
-      <div className="p-3 border-t border-dv-border/30">
+      <div className="p-3 border-t border-dv-border-subtle">
         <div
           className={clsx(
-            'flex items-center gap-3 px-3 py-2.5 rounded-xl',
+            'flex items-center gap-3 px-3 py-2 rounded-[10px]',
             isCollapsed ? 'justify-center' : ''
           )}
         >
@@ -112,10 +122,10 @@ export function Sidebar() {
             <img
               src={user.avatarUrl}
               alt={user.username}
-              className="w-8 h-8 rounded-full flex-shrink-0 ring-2 ring-dv-border"
+              className="w-8 h-8 rounded-full flex-shrink-0 ring-1 ring-dv-border"
             />
           ) : (
-            <div className="w-8 h-8 rounded-full bg-dv-accent/20 flex items-center justify-center flex-shrink-0 text-xs font-bold text-dv-accent">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-dv-accent/30 to-dv-indigo/30 flex items-center justify-center flex-shrink-0 text-xs font-bold text-dv-accent">
               {user?.username?.charAt(0).toUpperCase() || 'U'}
             </div>
           )}
@@ -125,16 +135,16 @@ export function Sidebar() {
               isCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'
             )}
           >
-            <p className="text-sm font-medium truncate">{user?.username || 'Developer'}</p>
-            <p className="text-xs text-dv-text-muted truncate">{user?.email || 'Connected'}</p>
+            <p className="ios-caption1 font-medium truncate">{user?.username || 'Developer'}</p>
+            <p className="ios-caption2 text-dv-text-muted truncate">{user?.email || 'Connected'}</p>
           </div>
           {!isCollapsed && (
             <button
               onClick={handleLogout}
-              className="p-1.5 rounded-lg text-dv-text-muted hover:text-dv-error hover:bg-dv-error/10 transition-colors"
+              className="p-1.5 rounded-[8px] text-dv-text-muted hover:text-dv-error hover:bg-dv-error/10 transition-all active:scale-[0.92]"
               title="Sign out"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
@@ -144,14 +154,14 @@ export function Sidebar() {
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
         className={clsx(
-          'absolute top-1/2 -right-3 w-6 h-6 rounded-full bg-dv-surface border border-dv-border/60 flex items-center justify-center',
-          'hover:bg-dv-elevated transition-all z-10',
+          'absolute top-1/2 -right-3 w-6 h-6 rounded-full bg-dv-surface/80 backdrop-blur-sm border border-dv-border flex items-center justify-center',
+          'hover:bg-dv-elevated transition-all z-10 active:scale-[0.9]',
           'opacity-0 group-hover/sidebar:opacity-100'
         )}
       >
         <ChevronLeft
           className={clsx(
-            'w-3.5 h-3.5 text-dv-text-muted transition-transform duration-300',
+            'w-3 h-3 text-dv-text-muted transition-transform duration-300',
             isCollapsed && 'rotate-180'
           )}
         />

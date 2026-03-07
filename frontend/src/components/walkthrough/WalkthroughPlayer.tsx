@@ -394,18 +394,18 @@ export function WalkthroughPlayer({
 
       {/* Audio status */}
       {audioLoading && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-dv-accent/10 border-b border-dv-border text-xs text-dv-accent">
+        <div className="flex items-center gap-2 px-4 py-2 bg-dv-accent/8 border-b border-dv-border-subtle ios-caption2 text-dv-accent">
           <div className="w-3 h-3 border-2 border-dv-accent/30 border-t-dv-accent rounded-full animate-spin" />
           Preparing AI voice…
         </div>
       )}
       {audioReady && (
-        <div className="flex items-center gap-2 px-4 py-1.5 bg-green-500/10 border-b border-dv-border text-xs text-green-400">
+        <div className="flex items-center gap-2 px-4 py-1.5 bg-dv-success/8 border-b border-dv-border-subtle ios-caption2 text-dv-success">
           🔊 AI voice ready
         </div>
       )}
       {audioError && (
-        <div className="flex items-center gap-2 px-4 py-1.5 bg-dv-error/10 border-b border-dv-border text-xs text-dv-error">
+        <div className="flex items-center gap-2 px-4 py-1.5 bg-dv-error/8 border-b border-dv-border-subtle ios-caption2 text-dv-error">
           ⚠️ {audioError}
         </div>
       )}
@@ -425,16 +425,16 @@ export function WalkthroughPlayer({
             <motion.div
               key={index}
               className={clsx(
-                'flex py-0.5 px-2 -mx-2 rounded transition-colors duration-300',
-                isHighlighted && 'bg-dv-accent/15 border-l-2 border-dv-accent',
+                'flex py-0.5 px-2 -mx-2 rounded-[4px] transition-colors duration-300',
+                isHighlighted && 'bg-dv-accent/12 border-l-2 border-dv-accent',
                 isInRange && !isHighlighted && 'bg-dv-accent/5'
               )}
               initial={false}
               animate={{
                 backgroundColor: isHighlighted
-                  ? 'rgba(99, 102, 241, 0.15)'
+                  ? 'rgba(10, 132, 255, 0.12)'
                   : isInRange
-                    ? 'rgba(99, 102, 241, 0.05)'
+                    ? 'rgba(10, 132, 255, 0.05)'
                     : 'transparent',
               }}
             >
@@ -461,16 +461,16 @@ export function WalkthroughPlayer({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
           >
-            <div className="glass-panel p-4">
+            <div className="bg-dv-surface/70 backdrop-blur-ios border border-dv-border rounded-ios-lg p-4 shadow-ios">
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-dv-accent/20 flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-dv-accent/15 flex items-center justify-center flex-shrink-0">
                   <Volume2 className="w-4 h-4 text-dv-accent" />
                 </div>
                 <div>
-                  <p className="text-sm text-dv-text-muted mb-1">
+                  <p className="ios-caption2 text-dv-text-muted mb-1">
                     Segment {currentSegmentIndex + 1} of {script.segments.length}
                   </p>
-                  <p className="text-dv-text leading-relaxed">{currentSegment?.text ?? ''}</p>
+                  <p className="ios-subhead text-dv-text leading-relaxed">{currentSegment?.text ?? ''}</p>
                 </div>
               </div>
             </div>
@@ -479,10 +479,10 @@ export function WalkthroughPlayer({
       </AnimatePresence>
 
       {/* Controls */}
-      <div className="border-t border-dv-border bg-dv-surface p-4">
+      <div className="border-t border-dv-border bg-dv-surface/60 backdrop-blur-ios p-4">
         {/* Progress bar */}
         <div
-          className="h-2 bg-dv-elevated rounded-full mb-4 cursor-pointer overflow-hidden"
+          className="h-1.5 bg-[var(--glass-6)] rounded-full mb-4 cursor-pointer overflow-hidden"
           onClick={handleSeek}
         >
           <motion.div
@@ -491,7 +491,7 @@ export function WalkthroughPlayer({
             animate={{ width: `${totalProgress}%` }}
             transition={{ type: 'spring', damping: 30, stiffness: 200 }}
           >
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg transform translate-x-1/2" />
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white rounded-full shadow-ios-sm transform translate-x-1/2" />
           </motion.div>
         </div>
 
@@ -499,10 +499,10 @@ export function WalkthroughPlayer({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             {/* Play controls */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={handleSkipBack}
-                className="p-2 rounded-lg hover:bg-dv-elevated transition-colors"
+                className="p-2 rounded-[10px] hover:bg-[var(--glass-6)] transition-colors active:scale-[0.92]"
                 disabled={currentSegmentIndex === 0}
               >
                 <SkipBack className="w-5 h-5 text-dv-text-muted" />
@@ -510,27 +510,27 @@ export function WalkthroughPlayer({
 
               <button
                 onClick={() => {
-                  if (!audioReady && audioLoading) return // Don't play until audio is ready
+                  if (!audioReady && audioLoading) return
                   onPlayingChange(!isPlaying)
                 }}
                 className={clsx(
-                  'w-14 h-14 rounded-full flex items-center justify-center transition-colors',
+                  'w-12 h-12 rounded-full flex items-center justify-center transition-all active:scale-[0.92] shadow-ios-sm',
                   audioReady
-                    ? 'bg-dv-accent hover:bg-dv-accent-hover cursor-pointer'
+                    ? 'bg-dv-accent hover:brightness-110 cursor-pointer'
                     : 'bg-dv-accent/40 cursor-not-allowed'
                 )}
                 disabled={!audioReady}
               >
                 {isPlaying ? (
-                  <Pause className="w-6 h-6 text-white" />
+                  <Pause className="w-5 h-5 text-white" />
                 ) : (
-                  <Play className="w-6 h-6 text-white ml-1" />
+                  <Play className="w-5 h-5 text-white ml-0.5" />
                 )}
               </button>
 
               <button
                 onClick={handleSkipForward}
-                className="p-2 rounded-lg hover:bg-dv-elevated transition-colors"
+                className="p-2 rounded-[10px] hover:bg-[var(--glass-6)] transition-colors active:scale-[0.92]"
                 disabled={currentSegmentIndex === script.segments.length - 1}
               >
                 <SkipForward className="w-5 h-5 text-dv-text-muted" />
@@ -538,23 +538,23 @@ export function WalkthroughPlayer({
             </div>
 
             {/* Time display */}
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-dv-text">{formatTime(currentTime)}</span>
+            <div className="flex items-center gap-1.5 ios-caption1">
+              <span className="text-dv-text font-medium">{formatTime(currentTime)}</span>
               <span className="text-dv-text-muted">/</span>
               <span className="text-dv-text-muted">{formatTime(audioDuration)}</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {/* Volume */}
             <button
               onClick={() => setIsMuted(!isMuted)}
-              className="p-2 rounded-lg hover:bg-dv-elevated transition-colors"
+              className="p-2 rounded-[10px] hover:bg-[var(--glass-6)] transition-colors active:scale-[0.92]"
             >
               {isMuted ? (
-                <VolumeX className="w-5 h-5 text-dv-text-muted" />
+                <VolumeX className="w-4.5 h-4.5 text-dv-text-muted" />
               ) : (
-                <Volume2 className="w-5 h-5 text-dv-text-muted" />
+                <Volume2 className="w-4.5 h-4.5 text-dv-text-muted" />
               )}
             </button>
 
@@ -562,31 +562,31 @@ export function WalkthroughPlayer({
             <button
               onClick={() => setShowTranscript(!showTranscript)}
               className={clsx(
-                'p-2 rounded-lg transition-colors',
-                showTranscript ? 'bg-dv-accent/10 text-dv-accent' : 'hover:bg-dv-elevated text-dv-text-muted'
+                'p-2 rounded-[10px] transition-colors active:scale-[0.92]',
+                showTranscript ? 'bg-dv-accent/10 text-dv-accent' : 'hover:bg-[var(--glass-6)] text-dv-text-muted'
               )}
             >
-              <MessageSquare className="w-5 h-5" />
+              <MessageSquare className="w-4.5 h-4.5" />
             </button>
 
             {/* Playback speed */}
             <div className="relative group">
-              <button className="flex items-center gap-1 px-3 py-2 rounded-lg hover:bg-dv-elevated transition-colors">
-                <Clock className="w-4 h-4 text-dv-text-muted" />
-                <span className="text-sm text-dv-text-muted">{playbackSpeed}x</span>
+              <button className="flex items-center gap-1 px-2.5 py-2 rounded-[10px] hover:bg-[var(--glass-6)] transition-colors">
+                <Clock className="w-3.5 h-3.5 text-dv-text-muted" />
+                <span className="ios-caption1 text-dv-text-muted font-medium">{playbackSpeed}x</span>
               </button>
 
               <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block">
-                <div className="glass-panel p-2 flex flex-col gap-1">
+                <div className="bg-dv-surface/80 backdrop-blur-ios border border-dv-border rounded-[12px] p-1.5 shadow-ios flex flex-col gap-0.5">
                   {[0.5, 0.75, 1, 1.25, 1.5, 2].map((speed) => (
                     <button
                       key={speed}
                       onClick={() => setPlaybackSpeed(speed)}
                       className={clsx(
-                        'px-3 py-1.5 rounded text-sm transition-colors',
+                        'px-3 py-1.5 rounded-[8px] ios-caption1 transition-colors',
                         playbackSpeed === speed
-                          ? 'bg-dv-accent/10 text-dv-accent'
-                          : 'hover:bg-dv-elevated text-dv-text-muted'
+                          ? 'bg-dv-accent/10 text-dv-accent font-medium'
+                          : 'hover:bg-[var(--glass-4)] text-dv-text-muted'
                       )}
                     >
                       {speed}x

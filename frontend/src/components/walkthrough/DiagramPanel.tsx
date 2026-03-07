@@ -8,6 +8,7 @@ import {
   Layers,
   Loader2,
   AlertCircle,
+  Maximize2,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { diagrams } from '@/lib/api'
@@ -16,6 +17,7 @@ import toast from 'react-hot-toast'
 interface DiagramPanelProps {
   repositoryId: string
   filePath: string
+  onExpand?: () => void
 }
 
 type DiagramType = 'flowchart' | 'classDiagram' | 'sequenceDiagram'
@@ -26,7 +28,7 @@ const DIAGRAM_LABELS: Record<DiagramType, string> = {
   sequenceDiagram: 'Sequence',
 }
 
-export function DiagramPanel({ repositoryId, filePath }: DiagramPanelProps) {
+export function DiagramPanel({ repositoryId, filePath, onExpand }: DiagramPanelProps) {
   const [diagramType, setDiagramType] = useState<DiagramType>('flowchart')
   const [mermaidCode, setMermaidCode] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -66,37 +68,64 @@ export function DiagramPanel({ repositoryId, filePath }: DiagramPanelProps) {
     renderMermaid(mermaidCode)
   }, [mermaidCode])
 
+  // Re-render mermaid when theme changes
+  useEffect(() => {
+    const html = document.documentElement
+    const observer = new MutationObserver(() => {
+      if (mermaidCode) renderMermaid(mermaidCode)
+    })
+    observer.observe(html, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
+  }, [mermaidCode])
+
   const renderMermaid = async (code: string) => {
     if (!containerRef.current) return
     
     // Clear previous content to prevent React conflicts
     containerRef.current.innerHTML = ''
+
+    const isLight = document.documentElement.classList.contains('light')
     
     try {
       const mermaid = (await import('mermaid')).default
       mermaid.initialize({
         startOnLoad: false,
-        theme: 'dark',
+        theme: isLight ? 'default' : 'dark',
         securityLevel: 'loose',
         flowchart: {
           useMaxWidth: true,
           htmlLabels: true,
           curve: 'linear',
         },
-        themeVariables: {
-          primaryColor: '#6366f1',
-          primaryTextColor: '#e4e4e7',
-          primaryBorderColor: '#27272a',
-          lineColor: '#52525b',
-          secondaryColor: '#18181b',
-          tertiaryColor: '#0f0f11',
-          background: '#09090b',
-          mainBkg: '#18181b',
-          nodeBorder: '#27272a',
-          clusterBkg: '#18181b',
-          titleColor: '#e4e4e7',
-          edgeLabelBackground: '#18181b',
-        },
+        themeVariables: isLight
+          ? {
+              primaryColor: '#818cf8',
+              primaryTextColor: '#1c1917',
+              primaryBorderColor: '#d4d4d8',
+              lineColor: '#a1a1aa',
+              secondaryColor: '#f4f4f5',
+              tertiaryColor: '#fafafa',
+              background: '#ffffff',
+              mainBkg: '#f4f4f5',
+              nodeBorder: '#d4d4d8',
+              clusterBkg: '#f4f4f5',
+              titleColor: '#1c1917',
+              edgeLabelBackground: '#f4f4f5',
+            }
+          : {
+              primaryColor: '#6366f1',
+              primaryTextColor: '#e4e4e7',
+              primaryBorderColor: '#27272a',
+              lineColor: '#52525b',
+              secondaryColor: '#18181b',
+              tertiaryColor: '#0f0f11',
+              background: '#09090b',
+              mainBkg: '#18181b',
+              nodeBorder: '#27272a',
+              clusterBkg: '#18181b',
+              titleColor: '#e4e4e7',
+              edgeLabelBackground: '#18181b',
+            },
       })
 
       // Use unique ID for each render
@@ -142,40 +171,47 @@ export function DiagramPanel({ repositoryId, filePath }: DiagramPanelProps) {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-dv-border/30">
+      <div className="p-4 border-b border-dv-border-subtle">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-medium flex items-center gap-2">
+          <h3 className="ios-caption1 font-medium flex items-center gap-2">
             <Layers className="w-4 h-4 text-dv-purple" />
             Diagrams
           </h3>
           <div className="flex items-center gap-1">
             <button
               onClick={generateDiagram}
-              className="p-1.5 rounded-lg hover:bg-dv-elevated transition-colors"
+              className="p-1.5 rounded-[8px] hover:bg-[var(--glass-6)] transition-colors active:scale-[0.92]"
               disabled={isLoading}
             >
               <RefreshCw className={clsx('w-3.5 h-3.5 text-dv-text-muted', isLoading && 'animate-spin')} />
             </button>
             <button
               onClick={handleDownload}
-              className="p-1.5 rounded-lg hover:bg-dv-elevated transition-colors"
+              className="p-1.5 rounded-[8px] hover:bg-[var(--glass-6)] transition-colors active:scale-[0.92]"
             >
               <Download className="w-3.5 h-3.5 text-dv-text-muted" />
             </button>
+            {onExpand && (
+              <button
+                onClick={onExpand}
+                className="p-1.5 rounded-[8px] hover:bg-[var(--glass-6)] transition-colors active:scale-[0.92]"
+                title="Expand"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-dv-text-muted" />
+              </button>
+            )}
           </div>
         </div>
 
         {/* Diagram type selector */}
-        <div className="flex gap-1 p-1 bg-dv-bg rounded-lg">
+        <div className="ios-segmented">
           {(Object.keys(DIAGRAM_LABELS) as DiagramType[]).map((type) => (
             <button
               key={type}
               onClick={() => setDiagramType(type)}
               className={clsx(
-                'flex-1 py-1.5 px-2 rounded-md text-xs font-medium transition-colors',
-                diagramType === type
-                  ? 'bg-dv-elevated text-dv-text'
-                  : 'text-dv-text-muted hover:text-dv-text'
+                'ios-segmented-item',
+                diagramType === type && 'active'
               )}
             >
               {DIAGRAM_LABELS[type]}
@@ -187,9 +223,9 @@ export function DiagramPanel({ repositoryId, filePath }: DiagramPanelProps) {
       {/* Diagram container */}
       <div className="flex-1 overflow-auto p-4 relative">
         {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-dv-bg z-10">
-            <div className="flex items-center gap-2 text-dv-text-muted">
-              <RefreshCw className="w-5 h-5 animate-spin" />
+          <div className="absolute inset-0 flex items-center justify-center bg-dv-bg/80 backdrop-blur-sm z-10">
+            <div className="flex items-center gap-2 text-dv-text-muted ios-caption1">
+              <RefreshCw className="w-4 h-4 animate-spin" />
               <span>Generating diagram...</span>
             </div>
           </div>
@@ -201,8 +237,8 @@ export function DiagramPanel({ repositoryId, filePath }: DiagramPanelProps) {
       </div>
 
       {/* Info */}
-      <div className="p-3 border-t border-dv-border/30">
-        <p className="text-[10px] text-dv-text-muted">
+      <div className="p-3 border-t border-dv-border-subtle">
+        <p className="ios-caption2 text-dv-text-muted">
           AI-generated from code analysis · Mermaid.js
         </p>
       </div>

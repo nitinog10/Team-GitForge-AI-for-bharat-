@@ -189,13 +189,23 @@ export const useRepositoryStore = create<RepositoryState>()((set) => ({
 // UI Store
 // ============================================================
 
+export type ThemeMode = 'dark' | 'light' | 'system'
+export type AccentColor = '#0a84ff' | '#bf5af2' | '#ff9f0a' | '#30d158' | '#ff375f' | '#5e5ce6' | '#64d2ff'
+export type FontSize = 'small' | 'default' | 'large'
+
 interface UIState {
   sidebarCollapsed: boolean
   activePanel: 'files' | 'diagram' | 'sandbox'
-  theme: 'dark' | 'light'
+  theme: ThemeMode
+  accentColor: AccentColor
+  fontSize: FontSize
+  reducedMotion: boolean
   setSidebarCollapsed: (collapsed: boolean) => void
   setActivePanel: (panel: 'files' | 'diagram' | 'sandbox') => void
-  setTheme: (theme: 'dark' | 'light') => void
+  setTheme: (theme: ThemeMode) => void
+  setAccentColor: (color: AccentColor) => void
+  setFontSize: (size: FontSize) => void
+  setReducedMotion: (reduced: boolean) => void
   toggleSidebar: () => void
 }
 
@@ -205,9 +215,15 @@ export const useUIStore = create<UIState>()(
       sidebarCollapsed: false,
       activePanel: 'files',
       theme: 'dark',
+      accentColor: '#0a84ff',
+      fontSize: 'default',
+      reducedMotion: false,
       setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
       setActivePanel: (panel) => set({ activePanel: panel }),
       setTheme: (theme) => set({ theme }),
+      setAccentColor: (color) => set({ accentColor: color }),
+      setFontSize: (size) => set({ fontSize: size }),
+      setReducedMotion: (reduced) => set({ reducedMotion: reduced }),
       toggleSidebar: () =>
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
     }),

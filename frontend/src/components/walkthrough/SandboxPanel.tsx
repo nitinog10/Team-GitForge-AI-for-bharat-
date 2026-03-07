@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Loader2,
   Code2,
+  Maximize2,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { sandbox } from '@/lib/api'
@@ -23,7 +24,7 @@ squares = [x**2 for x in range(10)]
 print(f"Squares: {squares}")
 `
 
-export function SandboxPanel() {
+export function SandboxPanel({ onExpand }: { onExpand?: () => void }) {
   const [code, setCode] = useState(DEFAULT_CODE)
   const [output, setOutput] = useState('')
   const [isRunning, setIsRunning] = useState(false)
@@ -61,16 +62,25 @@ export function SandboxPanel() {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-dv-border/30">
+      <div className="p-4 border-b border-dv-border-subtle">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium flex items-center gap-2">
+          <h3 className="ios-caption1 font-medium flex items-center gap-2">
             <Terminal className="w-4 h-4 text-dv-success" />
             Sandbox
           </h3>
           <div className="flex items-center gap-1">
+            {onExpand && (
+              <button
+                onClick={onExpand}
+                className="p-1.5 rounded-[8px] hover:bg-[var(--glass-6)] transition-colors active:scale-[0.92]"
+                title="Expand"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-dv-text-muted" />
+              </button>
+            )}
             <button
               onClick={handleReset}
-              className="p-1.5 rounded-lg hover:bg-dv-elevated transition-colors"
+              className="p-1.5 rounded-[8px] hover:bg-[var(--glass-6)] transition-colors active:scale-[0.92]"
               disabled={isRunning}
             >
               <RotateCcw className="w-3.5 h-3.5 text-dv-text-muted" />
@@ -78,7 +88,7 @@ export function SandboxPanel() {
             <button
               onClick={handleRun}
               disabled={isRunning}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-dv-success/10 text-dv-success hover:bg-dv-success/20 transition-colors disabled:opacity-50 text-xs font-medium"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-dv-success/10 text-dv-success hover:bg-dv-success/15 transition-colors disabled:opacity-40 ios-caption2 font-medium active:scale-[0.95]"
             >
               {isRunning ? (
                 <>
@@ -98,9 +108,9 @@ export function SandboxPanel() {
 
       {/* Code editor */}
       <div className="flex-1 overflow-hidden flex flex-col">
-        <div className="flex items-center gap-2 px-4 py-1.5 border-b border-dv-border/20 bg-dv-bg/50">
+        <div className="flex items-center gap-2 px-4 py-1.5 border-b border-dv-border-subtle bg-[var(--glass-2)]">
           <Code2 className="w-3.5 h-3.5 text-dv-text-muted" />
-          <span className="text-[10px] text-dv-text-muted">sandbox.py</span>
+          <span className="ios-caption2 text-dv-text-muted">sandbox.py</span>
         </div>
         <div className="flex-1 overflow-auto">
           <textarea
@@ -113,12 +123,12 @@ export function SandboxPanel() {
       </div>
 
       {/* Output */}
-      <div className="border-t border-dv-border/30">
-        <div className="flex items-center gap-2 px-4 py-1.5 bg-dv-bg/50 border-b border-dv-border/20">
+      <div className="border-t border-dv-border-subtle">
+        <div className="flex items-center gap-2 px-4 py-1.5 bg-[var(--glass-2)] border-b border-dv-border-subtle">
           <Terminal className="w-3.5 h-3.5 text-dv-text-muted" />
-          <span className="text-[10px] text-dv-text-muted">Output</span>
+          <span className="ios-caption2 text-dv-text-muted">Output</span>
           {executionTime !== null && (
-            <span className="text-[10px] text-dv-text-muted ml-auto">{executionTime.toFixed(0)}ms</span>
+            <span className="ios-caption2 text-dv-text-muted ml-auto">{executionTime.toFixed(0)}ms</span>
           )}
           {output && !error && (
             <CheckCircle2 className="w-3.5 h-3.5 text-dv-success ml-auto" />
@@ -127,7 +137,7 @@ export function SandboxPanel() {
             <AlertCircle className="w-3.5 h-3.5 text-dv-error ml-auto" />
           )}
         </div>
-        <div className="h-28 overflow-auto p-4 bg-dv-bg font-mono text-xs">
+        <div className="h-28 overflow-auto p-4 bg-[var(--glass-2)] font-mono ios-caption2">
           {isRunning && (
             <motion.div
               className="flex items-center gap-2 text-dv-text-muted"
