@@ -7,10 +7,14 @@ import asyncio
 import base64
 import json
 import logging
+import os
+import shutil
 import time
+import uuid
+import zipfile
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Header, UploadFile, File, Form
 
 from app.services.bedrock_client import call_nova_pro, call_nova_lite
 
@@ -18,6 +22,7 @@ from app.config import get_settings
 from app.models.schemas import (
     CreateRepoRequest,
     CreateRepoResponse,
+    CreateRepoWithUploadResponse,
     PushReadmeRequest,
     PushReadmeResponse,
     CreateIssueRequest,
@@ -25,11 +30,14 @@ from app.models.schemas import (
     ImplementFixRequest,
     ImplementFixResponse,
     AutomationHistory,
+    Repository,
+    RepositoryResponse,
     User,
 )
 from app.api.endpoints.auth import get_current_user
+from app.api.endpoints.repositories import repositories_db
 from app.services.github_service import GitHubService, GitHubAPIError
-from app.services.persistence import save_automation_history, load_automation_history
+from app.services.persistence import save_automation_history, load_automation_history, save_repositories
 
 router = APIRouter()
 settings = get_settings()
@@ -83,6 +91,197 @@ async def create_repo(
         full_name=data["full_name"],
         github_id=data["id"],
         default_branch=data.get("default_branch", "main"),
+    )
+
+
+# ─────────────────────────────────────────────
+# Feature 1b — Create Repository + Upload Files
+# ─────────────────────────────────────────────
+
+_MAX_UPLOAD_BYTES = 100 * 1024 * 1024  # 100 MB
+
+_LANG_EXTENSIONS: dict[str, str] = {
+    ".py": "Python", ".js": "JavaScript", ".ts": "TypeScript",
+    ".tsx": "TypeScript", ".jsx": "JavaScript", ".java": "Java",
+    ".go": "Go", ".rs": "Rust", ".rb": "Ruby", ".cpp": "C++",
+    ".c": "C", ".cs": "C#", ".swift": "Swift", ".kt": "Kotlin",
+}
+
+
+def _guess_language(root_path: str) -> Optional[str]:
+    """Walk the extracted tree and return the most common source language."""
+    counts: dict[str, int] = {}
+    for dirpath, dirnames, filenames in os.walk(root_path):
+        dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS]
+        for fname in filenames:
+            ext = os.path.splitext(fname)[1].lower()
+            lang = _LANG_EXTENSIONS.get(ext)
+            if lang:
+                counts[lang] = counts.get(lang, 0) + 1
+    if not counts:
+        return None
+    return max(counts, key=counts.get)  # type: ignore[arg-type]
+
+
+async def _index_repo_background(repo: Repository):
+    """Run indexer on a repository (background task)."""
+    try:
+        from app.services.indexer import IndexerService
+        indexer = IndexerService()
+        await indexer.index_repository(repo)
+        logger.info("Auto-indexed repository %s", repo.name)
+    except Exception as e:
+        logger.warning("Auto-indexing failed for %s: %s", repo.name, e)
+
+
+@router.post("/create-repo-with-upload", response_model=CreateRepoWithUploadResponse)
+async def create_repo_with_upload(
+    background_tasks: BackgroundTasks,
+    name: str = Form(...),
+    description: str = Form(""),
+    private: str = Form("false"),
+    file: UploadFile = File(...),
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+):
+    """
+    Create a new GitHub repository and push uploaded ZIP contents into it
+    in a single atomic operation.  The repo is also auto-connected to
+    DocuVerse for indexing.
+    """
+    user = await _require_user(authorization)
+    is_private = private.lower() in ("true", "1", "yes")
+    gh = GitHubService(user.access_token)
+
+    # ── Validate ZIP ───────────────────────────────────────────
+    if not file.filename or not file.filename.lower().endswith(".zip"):
+        raise HTTPException(status_code=400, detail="Only .zip files are accepted")
+    contents = await file.read()
+    if len(contents) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File exceeds maximum size of {_MAX_UPLOAD_BYTES // (1024 * 1024)} MB",
+        )
+
+    # ── Create the GitHub repo (or use existing if 409) ──────
+    try:
+        repo_data = await gh.create_repo(
+            name=name.strip(),
+            description=description.strip(),
+            private=is_private,
+        )
+    except GitHubAPIError as exc:
+        if exc.status == 422 or exc.status == 409:
+            # Repo already exists — fetch it and continue with the push
+            try:
+                repo_data = await gh._request(
+                    "GET", f"https://api.github.com/repos/{user.username}/{name.strip()}",
+                )
+            except GitHubAPIError:
+                raise HTTPException(
+                    status_code=exc.status,
+                    detail=f"Repository '{name.strip()}' already exists and could not be accessed",
+                )
+        else:
+            raise HTTPException(status_code=exc.status, detail=str(exc))
+
+    full_name = repo_data["full_name"]
+    owner, repo_name = full_name.split("/", 1)
+    default_branch = repo_data.get("default_branch", "main")
+    logger.info("✅ Repo ready: %s (branch: %s)", full_name, default_branch)
+
+    # ── Extract ZIP to temp dir ────────────────────────────────
+    tmp_id = uuid.uuid4().hex[:12]
+    repos_dir = settings.repos_directory
+    os.makedirs(repos_dir, exist_ok=True)
+    local_path = os.path.join(repos_dir, f"tmp_{tmp_id}")
+
+    try:
+        zip_path = os.path.join(repos_dir, f"tmp_{tmp_id}.zip")
+        with open(zip_path, "wb") as f:
+            f.write(contents)
+
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            for member in zf.namelist():
+                resolved = os.path.realpath(os.path.join(local_path, member))
+                if not resolved.startswith(os.path.realpath(local_path)):
+                    raise HTTPException(status_code=400, detail="ZIP contains unsafe path entries")
+            zf.extractall(local_path)
+
+        os.remove(zip_path)
+
+        # Flatten single top-level directory
+        entries = os.listdir(local_path)
+        logger.info("📦 Extracted %d top-level entries to %s", len(entries), local_path)
+        if len(entries) == 1:
+            single = os.path.join(local_path, entries[0])
+            if os.path.isdir(single):
+                temp_name = local_path + "_flatten"
+                os.rename(single, temp_name)
+                shutil.rmtree(local_path)
+                os.rename(temp_name, local_path)
+
+    except zipfile.BadZipFile:
+        if os.path.exists(local_path):
+            shutil.rmtree(local_path)
+        raise HTTPException(status_code=400, detail="Invalid or corrupted ZIP file")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        if os.path.exists(local_path):
+            shutil.rmtree(local_path)
+        raise HTTPException(status_code=500, detail=f"Failed to extract ZIP: {exc}")
+
+    # ── Push files to GitHub via Git Data API ──────────────────
+    try:
+        logger.info("🚀 Pushing files from %s to %s/%s ...", local_path, owner, repo_name)
+        push_result = await gh.push_directory(
+            owner=owner,
+            repo=repo_name,
+            local_path=local_path,
+            branch=default_branch,
+            message=f"Initial commit — uploaded via DocuVerse",
+        )
+    except GitHubAPIError as exc:
+        shutil.rmtree(local_path, ignore_errors=True)
+        logger.error("❌ Push failed (GitHubAPIError): %s", exc)
+        raise HTTPException(status_code=exc.status, detail=str(exc))
+    except Exception as exc:
+        shutil.rmtree(local_path, ignore_errors=True)
+        logger.error("❌ Push failed (Exception): %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to push files: {exc}")
+
+    logger.info("✅ Pushed %d files, commit: %s", push_result["files_pushed"], push_result["commit_sha"])
+
+    # ── Create DocuVerse Repository record ─────────────────────
+    language = _guess_language(local_path)
+    repo_id = f"repo_{uuid.uuid4().hex[:12]}"
+    repo = Repository(
+        id=repo_id,
+        user_id=user.id,
+        github_repo_id=repo_data["id"],
+        name=repo_data["name"],
+        full_name=full_name,
+        description=repo_data.get("description"),
+        default_branch=default_branch,
+        language=language,
+        clone_url=repo_data["clone_url"],
+        local_path=local_path,
+        source="github",
+    )
+    repositories_db[repo_id] = repo
+    save_repositories(repositories_db)
+
+    # Index in background
+    background_tasks.add_task(_index_repo_background, repo)
+
+    return CreateRepoWithUploadResponse(
+        url=repo_data["html_url"],
+        full_name=full_name,
+        github_id=repo_data["id"],
+        default_branch=default_branch,
+        files_pushed=push_result["files_pushed"],
+        commit_sha=push_result["commit_sha"],
+        repository_id=repo_id,
     )
 
 

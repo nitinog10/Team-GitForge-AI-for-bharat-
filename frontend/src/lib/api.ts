@@ -487,6 +487,16 @@ export interface CreateRepoResponse {
   default_branch: string
 }
 
+export interface CreateRepoWithUploadResponse {
+  url: string
+  full_name: string
+  github_id: number
+  default_branch: string
+  files_pushed: number
+  commit_sha: string
+  repository_id: string
+}
+
 export interface PushReadmeResponse {
   success: boolean
   commit_sha: string
@@ -535,6 +545,39 @@ export const github = {
       method: 'POST',
       body: { name, description, private: isPrivate },
     }),
+
+  createRepoWithUpload: async (
+    name: string,
+    description: string,
+    isPrivate: boolean,
+    file: File,
+  ): Promise<CreateRepoWithUploadResponse> => {
+    const token = getAuthToken()
+    const formData = new FormData()
+    formData.append('name', name)
+    formData.append('description', description)
+    formData.append('private', String(isPrivate))
+    formData.append('file', file)
+
+    const response = await fetch(`${API_BASE_URL}/github/create-repo-with-upload`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new APIError(
+        errorData.detail || 'Failed to create repository with upload',
+        response.status,
+        errorData,
+      )
+    }
+
+    return response.json()
+  },
 
   pushReadme: (
     owner: string,

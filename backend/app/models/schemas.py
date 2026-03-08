@@ -344,6 +344,17 @@ class CreateRepoResponse(BaseModel):
     default_branch: str = "main"
 
 
+class CreateRepoWithUploadResponse(BaseModel):
+    """Response after creating a GitHub repository and pushing project files"""
+    url: str
+    full_name: str
+    github_id: int
+    default_branch: str = "main"
+    files_pushed: int = 0
+    commit_sha: str = ""
+    repository_id: str = ""
+
+
 class PushReadmeRequest(BaseModel):
     """Request to push documentation to a repo README"""
     owner: str
