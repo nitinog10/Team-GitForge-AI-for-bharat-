@@ -226,14 +226,14 @@ export default function RepositoryPage({ params }: { params: { id: string } }) {
                 </div>
               </div>
             )}
-            {(repo.indexed_at || repo.created_at) && (
+            {(repo.created_at || repo.indexed_at) && (
               <div className="card flex items-center gap-3">
                 <div className="w-9 h-9 rounded-[10px] bg-dv-success/10 flex items-center justify-center text-dv-success">
                   <Clock className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-ios-subhead font-semibold">{formatRelativeTime(repo.indexed_at || repo.created_at!)}</p>
-                  <p className="text-ios-caption1 text-dv-text-muted">{repo.indexed_at ? 'Last indexed' : 'Connected'}</p>
+                  <p className="text-ios-subhead font-semibold">{formatRelativeTime(repo.created_at || repo.indexed_at!)}</p>
+                  <p className="text-ios-caption1 text-dv-text-muted">Connected</p>
                 </div>
               </div>
             )}

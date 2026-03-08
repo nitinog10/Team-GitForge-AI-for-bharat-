@@ -20,7 +20,8 @@ import {
   Globe,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import { useRef, useCallback } from 'react'
 import { useUserStore } from '@/lib/store'
 
 /* ── Apple-style easing ── */
@@ -43,6 +44,7 @@ const scaleIn = {
 export default function HomePage() {
   const { isAuthenticated } = useUserStore()
   const authTarget = isAuthenticated ? '/dashboard' : '/auth/signin'
+  const router = useRouter()
   const heroRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
     target: heroRef,
@@ -50,6 +52,13 @@ export default function HomePage() {
   })
   const heroOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
   const heroScale = useTransform(scrollYProgress, [0, 0.5], [1, 0.96])
+
+  // Check auth at click time to avoid hydration timing issues
+  const handleAuthClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    router.push(token ? '/dashboard' : '/auth/signin')
+  }, [router])
 
   return (
     <div className="min-h-screen bg-dv-bg overflow-x-hidden text-dv-text selection:bg-dv-accent/30">
@@ -83,12 +92,14 @@ export default function HomePage() {
           <div className="flex items-center gap-3">
             <Link
               href={authTarget}
+              onClick={handleAuthClick}
               className="text-[13px] text-dv-text/50 hover:text-dv-text/90 transition-colors hidden sm:block"
             >
               {isAuthenticated ? 'Dashboard' : 'Sign in'}
             </Link>
             <Link
               href={authTarget}
+              onClick={handleAuthClick}
               className="text-[13px] font-medium bg-[var(--glass-12)] backdrop-blur-xl border border-dv-border text-dv-text px-4 py-1.5 rounded-full hover:bg-[var(--glass-16)] hover:border-dv-border active:scale-[0.97] transition-all shadow-[var(--btn-solid-shadow)]"
             >
               Get Started
@@ -149,6 +160,7 @@ export default function HomePage() {
             <motion.div variants={riseUp} className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
                 href={authTarget}
+                onClick={handleAuthClick}
                 className="group flex items-center gap-2.5 bg-[var(--glass-10)] backdrop-blur-2xl border border-dv-border text-dv-text font-semibold text-[15px] px-8 py-3.5 rounded-full hover:bg-[var(--glass-16)] hover:border-dv-border hover:shadow-[var(--card-shadow)] active:scale-[0.97] transition-all shadow-[var(--card-shadow)]"
               >
                 <Play className="w-4 h-4" />

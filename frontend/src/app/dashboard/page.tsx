@@ -453,9 +453,9 @@ function RepoRow({ repo, isLast }: { repo: Repository; isLast: boolean }) {
             {repo.language}
           </span>
         )}
-        {(repo.indexed_at || repo.created_at) && (
+        {(repo.created_at || repo.indexed_at) && (
           <span className="text-[11px] text-dv-text/20 hidden sm:block">
-            {formatRelativeTime(repo.indexed_at || repo.created_at!)}
+            {formatRelativeTime(repo.created_at || repo.indexed_at!)}
           </span>
         )}
         <ChevronRight className="w-4 h-4 text-dv-text/10 group-hover:text-dv-text/30 group-hover:translate-x-0.5 transition-all" />
