@@ -2,7 +2,7 @@
 Pydantic schemas for DocuVerse API
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from enum import Enum
 from pydantic import BaseModel, Field
@@ -49,7 +49,7 @@ class User(BaseModel):
     email: Optional[str] = None
     avatar_url: Optional[str] = None
     access_token: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class UserResponse(BaseModel):
@@ -78,7 +78,7 @@ class Repository(BaseModel):
     local_path: Optional[str] = None
     is_indexed: bool = False
     indexed_at: Optional[datetime] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     source: str = "github"  # "github" or "upload"
 
 
@@ -183,7 +183,7 @@ class WalkthroughScript(BaseModel):
     view_mode: ViewMode
     segments: List[ScriptSegment]
     total_duration: float
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: Dict[str, Any] = {}
 
 
@@ -216,7 +216,7 @@ class AudioWalkthrough(BaseModel):
     audio_segments: List[AudioSegment]
     full_audio_url: Optional[str] = None
     total_duration: float
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 # ============================================================
@@ -230,7 +230,7 @@ class DiagramData(BaseModel):
     title: str
     mermaid_code: str
     source_file: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class DiagramRequest(BaseModel):

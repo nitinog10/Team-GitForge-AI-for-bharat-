@@ -26,7 +26,12 @@ export function formatDuration(seconds: number): string {
  */
 export function formatRelativeTime(date: Date | string): string {
   const now = new Date()
-  const then = new Date(date)
+  // Backend sends UTC timestamps without timezone suffix — ensure JS treats them as UTC
+  let dateStr = typeof date === 'string' ? date : date.toISOString()
+  if (typeof date === 'string' && !date.endsWith('Z') && !date.includes('+') && !date.includes('-', 10)) {
+    dateStr = date + 'Z'
+  }
+  const then = new Date(dateStr)
   const diffMs = now.getTime() - then.getTime()
   const diffSeconds = Math.floor(diffMs / 1000)
   const diffMinutes = Math.floor(diffSeconds / 60)

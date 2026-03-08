@@ -8,7 +8,7 @@ Coordinates the full indexing pipeline:
 """
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 import uuid
 
@@ -67,7 +67,7 @@ class IndexerService:
             
             # Step 4: Update repository status
             repo.is_indexed = True
-            repo.indexed_at = datetime.utcnow()
+            repo.indexed_at = datetime.now(timezone.utc)
             
             # Save repository state to persistence
             from app.api.endpoints.repositories import repositories_db

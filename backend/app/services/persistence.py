@@ -8,7 +8,7 @@ import json
 import os
 import base64
 from typing import Dict, Optional, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 
 import boto3
@@ -123,7 +123,7 @@ def load_repositories() -> Dict[str, Repository]:
                 except Exception:
                     pass
 
-            created_at = datetime.utcnow()
+            created_at = datetime.now(timezone.utc)
             if item.get("created_at"):
                 try:
                     created_at = datetime.fromisoformat(item["created_at"])
@@ -156,7 +156,7 @@ def load_repositories() -> Dict[str, Repository]:
                         indexed_at = datetime.fromisoformat(item["indexed_at"])
                     except Exception:
                         pass
-                created_at = datetime.utcnow()
+                created_at = datetime.now(timezone.utc)
                 if item.get("created_at"):
                     try:
                         created_at = datetime.fromisoformat(item["created_at"])
@@ -225,7 +225,7 @@ def load_users() -> Dict[str, User]:
 
         users = {}
         for item in response.get("Items", []):
-            created_at = datetime.utcnow()
+            created_at = datetime.now(timezone.utc)
             if item.get("created_at"):
                 try:
                     created_at = datetime.fromisoformat(item["created_at"])
@@ -315,7 +315,7 @@ def load_walkthroughs() -> Dict[str, WalkthroughScript]:
 
         walkthroughs: Dict[str, WalkthroughScript] = {}
         for item in response.get("Items", []):
-            created_at = datetime.utcnow()
+            created_at = datetime.now(timezone.utc)
             if item.get("created_at"):
                 try:
                     created_at = datetime.fromisoformat(item["created_at"])
@@ -420,7 +420,7 @@ def load_audio_walkthroughs() -> Dict[str, AudioWalkthrough]:
 
         audio_walkthroughs: Dict[str, AudioWalkthrough] = {}
         for item in response.get("Items", []):
-            created_at = datetime.utcnow()
+            created_at = datetime.now(timezone.utc)
             if item.get("created_at"):
                 try:
                     created_at = datetime.fromisoformat(item["created_at"])
