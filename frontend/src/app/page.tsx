@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRef } from 'react'
+import { useUserStore } from '@/lib/store'
 
 /* ── Apple-style easing ── */
 const appleEase = [0.25, 0.1, 0.25, 1] as const
@@ -40,6 +41,8 @@ const scaleIn = {
 }
 
 export default function HomePage() {
+  const { isAuthenticated } = useUserStore()
+  const authTarget = isAuthenticated ? '/dashboard' : '/auth/signin'
   const heroRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress } = useScroll({
     target: heroRef,
@@ -79,13 +82,13 @@ export default function HomePage() {
 
           <div className="flex items-center gap-3">
             <Link
-              href="/auth/signin"
+              href={authTarget}
               className="text-[13px] text-dv-text/50 hover:text-dv-text/90 transition-colors hidden sm:block"
             >
-              Sign in
+              {isAuthenticated ? 'Dashboard' : 'Sign in'}
             </Link>
             <Link
-              href="/auth/signin"
+              href={authTarget}
               className="text-[13px] font-medium bg-[var(--glass-12)] backdrop-blur-xl border border-dv-border text-dv-text px-4 py-1.5 rounded-full hover:bg-[var(--glass-16)] hover:border-dv-border active:scale-[0.97] transition-all shadow-[var(--btn-solid-shadow)]"
             >
               Get Started
@@ -145,7 +148,7 @@ export default function HomePage() {
             {/* CTA buttons */}
             <motion.div variants={riseUp} className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
-                href="/auth/signin"
+                href={authTarget}
                 className="group flex items-center gap-2.5 bg-[var(--glass-10)] backdrop-blur-2xl border border-dv-border text-dv-text font-semibold text-[15px] px-8 py-3.5 rounded-full hover:bg-[var(--glass-16)] hover:border-dv-border hover:shadow-[var(--card-shadow)] active:scale-[0.97] transition-all shadow-[var(--card-shadow)]"
               >
                 <Play className="w-4 h-4" />

@@ -121,7 +121,8 @@ export default function RepositoryPage({ params }: { params: { id: string } }) {
   }
 
   // Flatten files for list display
-  const flatFiles = flattenFileTree(fileTree).filter((f) => !f.is_directory).slice(0, 30)
+  const allFiles = flattenFileTree(fileTree).filter((f) => !f.is_directory)
+  const flatFiles = allFiles.slice(0, 30)
 
   if (isLoading) {
     return (
@@ -210,7 +211,7 @@ export default function RepositoryPage({ params }: { params: { id: string } }) {
                 <FileCode className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-[20px] font-bold tabular-nums">{flatFiles.length}</p>
+                <p className="text-[20px] font-bold tabular-nums">{allFiles.length}</p>
                 <p className="text-ios-caption1 text-dv-text-muted">Files</p>
               </div>
             </div>
@@ -225,14 +226,14 @@ export default function RepositoryPage({ params }: { params: { id: string } }) {
                 </div>
               </div>
             )}
-            {repo.indexed_at && (
+            {(repo.indexed_at || repo.created_at) && (
               <div className="card flex items-center gap-3">
                 <div className="w-9 h-9 rounded-[10px] bg-dv-success/10 flex items-center justify-center text-dv-success">
                   <Clock className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-ios-subhead font-semibold">{formatRelativeTime(repo.indexed_at)}</p>
-                  <p className="text-ios-caption1 text-dv-text-muted">Last indexed</p>
+                  <p className="text-ios-subhead font-semibold">{formatRelativeTime(repo.indexed_at || repo.created_at!)}</p>
+                  <p className="text-ios-caption1 text-dv-text-muted">{repo.indexed_at ? 'Last indexed' : 'Connected'}</p>
                 </div>
               </div>
             )}

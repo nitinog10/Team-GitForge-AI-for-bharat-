@@ -122,6 +122,7 @@ export interface Repository {
   language: string | null
   is_indexed: boolean
   indexed_at: string | null
+  created_at: string | null
   source?: 'github' | 'upload'
 }
 
@@ -335,6 +336,7 @@ export interface WalkthroughScript {
   view_mode: 'developer' | 'manager'
   segments: ScriptSegment[]
   total_duration: number
+  created_at?: string
 }
 
 export interface AudioWalkthrough {

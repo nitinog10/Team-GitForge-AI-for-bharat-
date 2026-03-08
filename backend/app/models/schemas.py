@@ -96,6 +96,7 @@ class RepositoryResponse(BaseModel):
     language: Optional[str] = None
     is_indexed: bool
     indexed_at: Optional[datetime] = None
+    created_at: Optional[datetime] = None
     source: str = "github"
 
 

@@ -96,11 +96,17 @@ export default function DashboardPage() {
     return () => clearInterval(interval)
   }, [connectedRepos, isLoading, fetchConnectedRepos])
 
-  const filteredRepos = connectedRepos.filter((repo) =>
-    repo.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    repo.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    repo.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredRepos = connectedRepos
+    .filter((repo) =>
+      repo.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      repo.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      repo.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      const dateA = a.indexed_at || a.created_at || ''
+      const dateB = b.indexed_at || b.created_at || ''
+      return new Date(dateB).getTime() - new Date(dateA).getTime()
+    })
 
   const indexedCount = connectedRepos.filter((r) => r.is_indexed).length
   const pendingCount = connectedRepos.length - indexedCount
@@ -447,9 +453,9 @@ function RepoRow({ repo, isLast }: { repo: Repository; isLast: boolean }) {
             {repo.language}
           </span>
         )}
-        {repo.indexed_at && (
+        {(repo.indexed_at || repo.created_at) && (
           <span className="text-[11px] text-dv-text/20 hidden sm:block">
-            {formatRelativeTime(repo.indexed_at)}
+            {formatRelativeTime(repo.indexed_at || repo.created_at!)}
           </span>
         )}
         <ChevronRight className="w-4 h-4 text-dv-text/10 group-hover:text-dv-text/30 group-hover:translate-x-0.5 transition-all" />

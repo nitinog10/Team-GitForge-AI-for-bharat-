@@ -26,6 +26,7 @@ from app.services.persistence import (
     save_walkthroughs, load_walkthroughs,
     save_audio_walkthroughs, load_audio_walkthroughs,
     save_audio_bytes, load_audio_bytes, delete_audio_bytes,
+    delete_walkthrough_record, delete_audio_walkthrough,
 )
 
 router = APIRouter()
@@ -318,12 +319,12 @@ async def delete_walkthrough(walkthrough_id: str, authorization: str = Header(No
         raise HTTPException(status_code=404, detail="Walkthrough not found")
     
     del walkthroughs_db[walkthrough_id]
-    save_walkthroughs(walkthroughs_db)  # persist deletion
+    delete_walkthrough_record(walkthrough_id)
     
     # Also delete audio if exists
     if walkthrough_id in audio_walkthroughs_db:
         del audio_walkthroughs_db[walkthrough_id]
-        save_audio_walkthroughs(audio_walkthroughs_db)
+        delete_audio_walkthrough(walkthrough_id)
     if walkthrough_id in audio_bytes_store:
         del audio_bytes_store[walkthrough_id]
         delete_audio_bytes(walkthrough_id)

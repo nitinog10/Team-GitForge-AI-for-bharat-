@@ -90,20 +90,26 @@ export default function RepositoriesPage() {
     }
   }
 
-  const filteredRepos = repos.filter((repo) => {
-    if (filterMode === 'indexed' && !repo.is_indexed) return false
-    if (filterMode === 'pending' && repo.is_indexed) return false
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase()
-      return (
-        repo.name.toLowerCase().includes(q) ||
-        repo.full_name.toLowerCase().includes(q) ||
-        repo.description?.toLowerCase().includes(q) ||
-        repo.language?.toLowerCase().includes(q)
-      )
-    }
-    return true
-  })
+  const filteredRepos = repos
+    .filter((repo) => {
+      if (filterMode === 'indexed' && !repo.is_indexed) return false
+      if (filterMode === 'pending' && repo.is_indexed) return false
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase()
+        return (
+          repo.name.toLowerCase().includes(q) ||
+          repo.full_name.toLowerCase().includes(q) ||
+          repo.description?.toLowerCase().includes(q) ||
+          repo.language?.toLowerCase().includes(q)
+        )
+      }
+      return true
+    })
+    .sort((a, b) => {
+      const dateA = a.indexed_at || a.created_at || ''
+      const dateB = b.indexed_at || b.created_at || ''
+      return new Date(dateB).getTime() - new Date(dateA).getTime()
+    })
 
   return (
     <div className="min-h-screen bg-dv-bg flex">

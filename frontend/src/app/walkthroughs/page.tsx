@@ -28,9 +28,9 @@ interface WalkthroughEntry extends WalkthroughScript {
 }
 
 const formatDuration = (seconds: number) => {
-  const mins = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  return `${mins}:${secs.toString().padStart(2, '0')}`
+  if (seconds < 60) return `${seconds.toFixed(1)} sec`
+  const mins = seconds / 60
+  return `${mins.toFixed(1)} min`
 }
 
 export default function WalkthroughsPage() {
@@ -95,7 +95,7 @@ export default function WalkthroughsPage() {
     })
     .sort((a, b) => {
       if (sortBy === 'duration') return b.total_duration - a.total_duration
-      return 0
+      return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
     })
 
   const handleDelete = async (id: string) => {
@@ -296,7 +296,7 @@ export default function WalkthroughsPage() {
                       <Clock className="w-3 h-3" />
                       {formatDuration(wt.total_duration)}
                     </span>
-                    <span className="hidden sm:block">{wt.segments.length} seg</span>
+                    <span className="hidden sm:block">{wt.segments.length} segments</span>
                   </div>
 
                   {/* Actions */}

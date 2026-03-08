@@ -22,7 +22,7 @@ from app.models.schemas import (
     FileNode,
 )
 from app.api.endpoints.auth import get_current_user, users_db
-from app.services.persistence import save_repositories, load_repositories
+from app.services.persistence import save_repositories, load_repositories, delete_repository
 
 router = APIRouter()
 settings = get_settings()
@@ -247,6 +247,7 @@ async def connect_repository(
         language=repo.language,
         is_indexed=repo.is_indexed,
         indexed_at=repo.indexed_at,
+        created_at=repo.created_at,
         source=repo.source,
     )
 
@@ -267,11 +268,6 @@ async def list_repositories(
         if repo.user_id == user.id
     ]
     
-    # Trigger background re-clone for any GitHub repos whose local files are missing
-    for repo in user_repos:
-        if repo.source != "upload" and repo.local_path and not os.path.exists(repo.local_path):
-            background_tasks.add_task(_ensure_repo_cloned, repo, user.access_token)
-    
     return [
         RepositoryResponse(
             id=repo.id,
@@ -281,6 +277,7 @@ async def list_repositories(
             language=repo.language,
             is_indexed=repo.is_indexed,
             indexed_at=repo.indexed_at,
+            created_at=repo.created_at,
             source=repo.source,
         )
         for repo in user_repos
@@ -347,6 +344,7 @@ async def get_repository(
         language=repo.language,
         is_indexed=repo.is_indexed,
         indexed_at=repo.indexed_at,
+        created_at=repo.created_at,
         source=repo.source,
     )
 
@@ -403,8 +401,8 @@ async def delete_repository(repo_id: str, authorization: str = Header(None)):
     # Remove from database
     del repositories_db[repo_id]
     
-    # Save to persistence
-    save_repositories(repositories_db)
+    # Delete from DynamoDB
+    delete_repository(repo_id)
     
     return APIResponse(success=True, message="Repository deleted")
 

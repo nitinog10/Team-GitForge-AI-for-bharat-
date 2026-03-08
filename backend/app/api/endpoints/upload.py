@@ -181,5 +181,6 @@ async def upload_zip(
         language=repo.language,
         is_indexed=repo.is_indexed,
         indexed_at=repo.indexed_at,
+        created_at=repo.created_at,
         source=repo.source,
     )

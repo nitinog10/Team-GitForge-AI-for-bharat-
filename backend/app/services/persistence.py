@@ -97,6 +97,16 @@ def save_repositories(repositories: Dict[str, Repository]):
         print(f"Error saving repositories to DynamoDB: {e}")
 
 
+def delete_repository(repo_id: str):
+    """Delete a single repository from DynamoDB"""
+    try:
+        dynamodb = _get_dynamodb_resource()
+        table = dynamodb.Table(_table_name("repositories"))
+        table.delete_item(Key={"id": repo_id})
+    except Exception as e:
+        print(f"Error deleting repository from DynamoDB: {e}")
+
+
 def load_repositories() -> Dict[str, Repository]:
     """Load repositories from DynamoDB"""
     try:
@@ -286,6 +296,16 @@ def save_walkthroughs(walkthroughs: Dict[str, WalkthroughScript]):
         print(f"Error saving walkthroughs to DynamoDB: {e}")
 
 
+def delete_walkthrough_record(walkthrough_id: str):
+    """Delete a single walkthrough from DynamoDB"""
+    try:
+        dynamodb = _get_dynamodb_resource()
+        table = dynamodb.Table(_table_name("walkthroughs"))
+        table.delete_item(Key={"id": walkthrough_id})
+    except Exception as e:
+        print(f"Error deleting walkthrough from DynamoDB: {e}")
+
+
 def load_walkthroughs() -> Dict[str, WalkthroughScript]:
     """Load walkthrough scripts from DynamoDB"""
     try:
@@ -379,6 +399,16 @@ def save_audio_walkthroughs(audio_walkthroughs: Dict[str, AudioWalkthrough]):
                 batch.put_item(Item=item)
     except Exception as e:
         print(f"Error saving audio walkthroughs to DynamoDB: {e}")
+
+
+def delete_audio_walkthrough(walkthrough_id: str):
+    """Delete a single audio walkthrough from DynamoDB"""
+    try:
+        dynamodb = _get_dynamodb_resource()
+        table = dynamodb.Table(_table_name("audio_walkthroughs"))
+        table.delete_item(Key={"id": walkthrough_id})
+    except Exception as e:
+        print(f"Error deleting audio walkthrough from DynamoDB: {e}")
 
 
 def load_audio_walkthroughs() -> Dict[str, AudioWalkthrough]:
