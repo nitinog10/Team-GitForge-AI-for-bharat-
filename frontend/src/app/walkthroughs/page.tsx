@@ -28,9 +28,9 @@ interface WalkthroughEntry extends WalkthroughScript {
 }
 
 const formatDuration = (seconds: number) => {
-  if (seconds < 60) return `${seconds.toFixed(1)} sec`
+  if (seconds < 60) return `${Math.round(seconds)} sec`
   const mins = seconds / 60
-  return `${mins.toFixed(1)} min`
+  return `${parseFloat(mins.toFixed(1))} min`
 }
 
 export default function WalkthroughsPage() {
