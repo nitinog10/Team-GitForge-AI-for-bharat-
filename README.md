@@ -6,7 +6,7 @@
 
 **Stop reading code. Start watching it.**
 
-[![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-logorhythms.in-blue?style=for-the-badge)](https://logorhythms.in)
+[![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-logorhythms.in-b  lue?style=for-the-badge)](https://logorhythms.in)
 
 [![Next.js](https://img.shields.io/badge/Next.js_14-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
