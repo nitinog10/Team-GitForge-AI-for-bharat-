@@ -3,7 +3,6 @@
 import { motion, useScroll, useTransform } from 'framer-motion'
 import {
   Play,
-  Code2,
   ArrowRight,
   GitBranch,
   Volume2,
@@ -66,9 +65,7 @@ export default function HomePage() {
       <nav className="fixed top-0 inset-x-0 z-50 bg-[var(--bar-bg)] backdrop-blur-2xl backdrop-saturate-[1.8] border-b border-dv-border">
         <div className="flex items-center justify-between max-w-[980px] mx-auto px-6 h-12">
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-dv-accent to-dv-indigo flex items-center justify-center">
-              <Code2 className="w-3.5 h-3.5 text-dv-text" />
-            </div>
+            <img src="/logo.png" alt="DocuVerse" className="w-7 h-7 rounded-lg object-cover" />
             <span className="text-[15px] font-semibold tracking-[-0.01em] text-dv-text/90 group-hover:text-dv-text transition-colors">
               DocuVerse
             </span>

@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  Code2,
   LayoutDashboard,
   FolderGit2,
   Play,
@@ -53,9 +52,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className="h-14 flex items-center px-5 border-b border-dv-border-subtle">
         <Link href="/" className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-dv-accent to-dv-indigo flex items-center justify-center flex-shrink-0 shadow-ios-sm">
-            <Code2 className="w-4 h-4 text-white" />
-          </div>
+          <img src="/logo.png" alt="DocuVerse" className="w-8 h-8 rounded-[10px] flex-shrink-0 shadow-ios-sm object-cover" />
           <span
             className={clsx(
               'ios-body font-bold text-dv-text tracking-tight transition-all duration-300',

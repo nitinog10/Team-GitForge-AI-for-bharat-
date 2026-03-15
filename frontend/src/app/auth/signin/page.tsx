@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Code2, Loader2, Sparkles, ArrowRight } from 'lucide-react'
+import { Loader2, Sparkles, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import { auth } from '@/lib/api'
 import toast from 'react-hot-toast'
@@ -49,9 +49,7 @@ export default function SignInPage() {
       >
         {/* Logo */}
         <Link href="/" className="inline-flex items-center gap-2.5 mb-10">
-          <div className="w-10 h-10 rounded-[14px] bg-gradient-to-br from-dv-accent to-dv-indigo flex items-center justify-center shadow-[0_0_24px_rgba(10,132,255,0.3)]">
-            <Code2 className="w-5 h-5 text-dv-text" />
-          </div>
+          <img src="/logo.png" alt="DocuVerse" className="w-10 h-10 rounded-[14px] shadow-[0_0_24px_rgba(10,132,255,0.3)] object-cover" />
         </Link>
 
         {/* Heading */}

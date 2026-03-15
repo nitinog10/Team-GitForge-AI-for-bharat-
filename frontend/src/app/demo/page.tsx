@@ -7,7 +7,7 @@ import {
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
   ChevronRight, ChevronDown, Folder, FolderOpen, FileCode,
   Layers, Zap, BookOpen, ArrowLeft, Clock, MessageSquare,
-  Code2, Sparkles, ArrowRight,
+  Sparkles, ArrowRight,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 
@@ -388,9 +388,7 @@ export default function DemoPage() {
       <div className="flex items-center justify-between px-5 h-12 bg-[var(--bar-bg)] backdrop-blur-2xl border-b border-dv-border flex-shrink-0 z-20">
         <div className="flex items-center gap-3">
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-dv-accent to-dv-indigo flex items-center justify-center">
-              <Code2 className="w-3.5 h-3.5 text-white" />
-            </div>
+            <img src="/logo.png" alt="DocuVerse" className="w-7 h-7 rounded-lg object-cover" />
             <span className="text-[14px] font-semibold tracking-[-0.01em]">DocuVerse</span>
           </Link>
           <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-dv-accent/10 text-dv-accent border border-dv-accent/20">DEMO</span>

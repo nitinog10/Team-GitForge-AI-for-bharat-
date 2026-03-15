@@ -4,7 +4,7 @@ import { Suspense } from 'react'
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Code2, Loader2, CheckCircle2, XCircle } from 'lucide-react'
+import { Loader2, CheckCircle2, XCircle } from 'lucide-react'
 import { useUserStore } from '@/lib/store'
 
 const appleEase = [0.25, 0.1, 0.25, 1] as const
@@ -26,9 +26,7 @@ function StatusCard({ children }: { children: React.ReactNode }) {
       >
         {/* Logo */}
         <div className="flex items-center justify-center gap-2.5 mb-8">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-dv-accent to-dv-indigo flex items-center justify-center">
-            <Code2 className="w-5 h-5 text-white" />
-          </div>
+          <img src="/logo.png" alt="DocuVerse" className="w-10 h-10 rounded-xl object-cover" />
           <span className="text-[22px] font-bold tracking-[-0.02em] bg-clip-text text-transparent bg-gradient-to-r from-dv-accent to-dv-purple">
             DocuVerse
           </span>

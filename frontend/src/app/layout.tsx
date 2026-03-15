@@ -21,7 +21,8 @@ export const metadata: Metadata = {
   title: 'DocuVerse — AI Code Walkthroughs',
   description: 'Transform complex codebases into interactive, audio-visual walkthroughs',
   icons: {
-    icon: '/favicon.ico',
+    icon: '/logo.png',
+    apple: '/logo.png',
   },
 }
 

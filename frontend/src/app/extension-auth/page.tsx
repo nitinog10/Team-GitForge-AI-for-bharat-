@@ -125,27 +125,20 @@ export default function ExtensionAuthPage() {
             width: '56px',
             height: '56px',
             borderRadius: '16px',
-            background: 'linear-gradient(135deg, #4F6EF7, #6366F1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            overflow: 'hidden',
             marginBottom: '28px',
             boxShadow: '0 8px 32px rgba(79, 110, 247, 0.3), 0 0 48px rgba(79, 110, 247, 0.1)',
           }}
         >
-          <svg
-            width="26"
-            height="26"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="white"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="16 18 22 12 16 6" />
-            <polyline points="8 6 2 12 8 18" />
-          </svg>
+          <img
+            src="/logo.png"
+            alt="DocuVerse"
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }}
+          />
         </motion.div>
 
         {/* Heading */}
